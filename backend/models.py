@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 # ── Inscription ──────────────────────────────────────────────
@@ -87,3 +87,42 @@ class BookResponse(BaseModel):
     author:     Optional[str]
     language:   str
     created_at: str
+
+
+# ── Chapitres ────────────────────────────────────────────────
+
+def recommend_words(word_count: int) -> int:
+    """Recommande ~5 mots à extraire pour 100 mots de texte (min 5, max 60)."""
+    return max(5, min(round(word_count * 0.05), 60))
+
+
+class ChapterCreate(BaseModel):
+    title:            str
+    content:          str
+    words_to_extract: Optional[int] = Field(default=None, ge=1, le=200)
+
+    @field_validator("title")
+    @classmethod
+    def title_valid(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Le titre du chapitre ne peut pas être vide.")
+        return v
+
+    @field_validator("content")
+    @classmethod
+    def content_valid(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Le contenu ne peut pas être vide.")
+        return v
+
+
+class ChapterResponse(BaseModel):
+    id:               int
+    book_id:          int
+    title:            str
+    content:          str
+    word_count:       int
+    words_to_extract: int
+    created_at:       str

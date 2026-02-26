@@ -17,6 +17,15 @@ def list_books(current_user: TokenData = Depends(get_current_user)):
     return book_service.get_user_books(current_user.user_id)
 
 
+@router.get("/{book_id}", response_model=BookResponse)
+def get_book(
+    book_id: int,
+    current_user: TokenData = Depends(get_current_user),
+):
+    """Retourne un livre par son id (vérifie l'ownership)."""
+    return book_service.get_book(book_id=book_id, user_id=current_user.user_id)
+
+
 @router.post("", response_model=BookResponse, status_code=201)
 def add_book(
     body: BookCreate,
@@ -24,3 +33,12 @@ def add_book(
 ):
     """Crée un nouveau livre pour l'utilisateur connecté."""
     return book_service.create_book(user_id=current_user.user_id, data=body)
+
+
+@router.delete("/{book_id}", status_code=204)
+def remove_book(
+    book_id: int,
+    current_user: TokenData = Depends(get_current_user),
+):
+    """Supprime un livre. Vérifie que le livre appartient à l'utilisateur connecté."""
+    book_service.delete_book(book_id=book_id, user_id=current_user.user_id)

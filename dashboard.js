@@ -21,6 +21,7 @@ if (!token || !username) {
 const navUsername       = document.getElementById("nav-username");
 const welcomeUsername   = document.getElementById("welcome-username");
 const logoutBtn         = document.getElementById("logout-btn");
+const booksError        = document.getElementById("books-error");
 const addBookBtn        = document.getElementById("add-book-btn");
 const addBookEmptyBtn   = document.getElementById("add-book-empty-btn");
 const modalOverlay      = document.getElementById("modal-overlay");
@@ -95,15 +96,60 @@ function renderBook(book) {
   li.className = "book-card";
   li.dataset.id = book.id;
   li.innerHTML = `
-    <p class="book-card__title">${escapeHtml(book.title)}</p>
-    <p class="book-card__author">${escapeHtml(book.author || "Auteur inconnu")}</p>
-    <span class="book-card__badge">${langLabel(book.language)}</span>
+    <div class="book-card__body">
+      <p class="book-card__title">${escapeHtml(book.title)}</p>
+      <p class="book-card__author">${escapeHtml(book.author || "Auteur inconnu")}</p>
+      <span class="book-card__badge">${langLabel(book.language)}</span>
+    </div>
+    <button class="book-card__delete" aria-label="Supprimer ce livre" title="Supprimer">🗑</button>
   `;
-  li.addEventListener("click", () => {
-    // TODO : ouvrir la page de vocabulaire du livre
-    alert(`📖 Vocabulaire de "${book.title}" — bientôt disponible !`);
+
+  li.querySelector(".book-card__body").addEventListener("click", () => {
+    window.location.href = `book.html?id=${book.id}`;
   });
+
+  li.querySelector(".book-card__delete").addEventListener("click", () =>
+    deleteBook(book.id, book.title, li)
+  );
+
   return li;
+}
+
+async function deleteBook(bookId, bookTitle, cardEl) {
+  if (!confirm(`Supprimer "${bookTitle}" ? Cette action est irréversible.`)) return;
+
+  cardEl.classList.add("book-card--deleting");
+
+  try {
+    const response = await fetch(`${API_URL}/books/${bookId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (response.status === 401) {
+      localStorage.clear();
+      window.location.href = "index.html";
+      return;
+    }
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      alert(data.detail || "Erreur lors de la suppression.");
+      cardEl.classList.remove("book-card--deleting");
+      return;
+    }
+
+    // Suppression visuelle sans recharger toute la liste
+    cardEl.remove();
+    if (bookGrid.children.length === 0) {
+      bookGrid.hidden   = true;
+      emptyState.hidden = false;
+    }
+  } catch (err) {
+    alert("Impossible de contacter le serveur.");
+    cardEl.classList.remove("book-card--deleting");
+    console.error(err);
+  }
 }
 
 function escapeHtml(str) {
@@ -149,16 +195,20 @@ async function loadBooks() {
     }
 
     if (!response.ok) {
-      // Route pas encore créée ou autre erreur serveur → état vide
+      booksError.textContent = `Erreur serveur (${response.status}) — impossible de charger les livres.`;
+      booksError.hidden = false;
       renderBookList([]);
       return;
     }
 
+    booksError.hidden = true;
     const books = await response.json();
     renderBookList(Array.isArray(books) ? books : []);
   } catch (err) {
     console.error("Impossible de charger les livres :", err);
-    renderBookList([]); // affiche l'état vide plutôt qu'un écran blanc
+    booksError.textContent = "Impossible de contacter le serveur.";
+    booksError.hidden = false;
+    renderBookList([]);
   }
 }
 

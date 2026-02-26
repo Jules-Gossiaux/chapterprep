@@ -1,0 +1,271 @@
+/* ───────────────────────────────────────────
+   Navbar — back button
+─────────────────────────────────────────── */
+.navbar__left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.navbar__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: var(--color-primary);
+  font-size: 1.2rem;
+  text-decoration: none;
+  transition: background var(--transition);
+}
+
+.navbar__back:hover {
+  background: var(--color-bg);
+}
+
+/* ───────────────────────────────────────────
+   En-tête du livre
+─────────────────────────────────────────── */
+.book-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.5rem 2rem;
+  box-shadow: var(--shadow);
+}
+
+.book-header__label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-primary);
+  margin-bottom: 0.3rem;
+}
+
+.book-header__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.book-header__author {
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  margin-top: 0.2rem;
+  font-style: italic;
+}
+
+/* ───────────────────────────────────────────
+   Liste des chapitres
+─────────────────────────────────────────── */
+.chapter-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.chapter-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.3rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: box-shadow var(--transition), opacity var(--transition);
+  cursor: default;
+}
+
+.chapter-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+}
+
+.chapter-card--deleting {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.chapter-card__index {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.chapter-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.chapter-card__title {
+  font-size: 1rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chapter-card__meta {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.chapter-card__stat {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+
+.chapter-card__stat strong {
+  color: var(--color-primary);
+}
+
+.chapter-card__delete {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-size: 1.05rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--transition);
+  padding: 0.3rem;
+  border-radius: 6px;
+  line-height: 1;
+}
+
+.chapter-card:hover .chapter-card__delete {
+  opacity: 1;
+}
+
+.chapter-card__delete:hover {
+  background: #fdecea;
+}
+
+/* ───────────────────────────────────────────
+   Modale large
+─────────────────────────────────────────── */
+.modal--wide {
+  max-width: 660px;
+}
+
+/* ───────────────────────────────────────────
+   Textarea
+─────────────────────────────────────────── */
+.form__textarea {
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.6;
+  min-height: 200px;
+}
+
+/* ───────────────────────────────────────────
+   Statistiques live
+─────────────────────────────────────────── */
+.word-stats {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 0.85rem 1.1rem;
+  background: #f0f7f3;
+  border: 1px solid #c3ddd0;
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.word-stats__count {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.word-stats__value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  line-height: 1;
+}
+
+.word-stats__label {
+  font-size: 0.82rem;
+  color: var(--color-muted);
+}
+
+.word-stats__divider {
+  width: 1px;
+  height: 28px;
+  background: #c3ddd0;
+}
+
+.word-stats__recommendation {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.word-stats__rec-value {
+  font-size: 1.1rem;
+  color: var(--color-primary);
+}
+
+/* ───────────────────────────────────────────
+   Slider
+─────────────────────────────────────────── */
+.extract-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.extract-current {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+.form__range {
+  width: 100%;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+  height: 6px;
+}
+
+.form__hint {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  margin-top: 0.4rem;
+  line-height: 1.5;
+}
+
+/* ───────────────────────────────────────────
+   Responsive
+─────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .book-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .word-stats__divider {
+    display: none;
+  }
+}

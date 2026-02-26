@@ -29,6 +29,17 @@ def get_book_by_id(book_id: int) -> sqlite3.Row | None:
         conn.close()
 
 
+# ─── Suppression ────────────────────────────────────────────
+
+def delete_book(book_id: int) -> None:
+    conn = get_connection()
+    try:
+        with conn:
+            conn.execute("DELETE FROM books WHERE id = ?", (book_id,))
+    finally:
+        conn.close()
+
+
 # ─── Écriture ─────────────────────────────────────────────────
 
 def create_book(user_id: int, title: str, author: str | None, language: str) -> int:

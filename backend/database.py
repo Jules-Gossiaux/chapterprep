@@ -33,4 +33,15 @@ def init_db() -> None:
                 created_at TEXT    NOT NULL DEFAULT (datetime('now'))
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS chapters (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                book_id          INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+                title            TEXT    NOT NULL,
+                content          TEXT    NOT NULL,
+                word_count       INTEGER NOT NULL DEFAULT 0,
+                words_to_extract INTEGER NOT NULL DEFAULT 5,
+                created_at       TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
     conn.close()

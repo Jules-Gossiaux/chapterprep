@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChapterPrep — Chapitres</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="dashboard.css" />
+    <link rel="stylesheet" href="book.css" />
+  </head>
+  <body class="dashboard-body">
+
+    <!-- ── Navbar ───────────────────────────────── -->
+    <header class="navbar">
+      <div class="navbar__left">
+        <a href="app.html" class="navbar__back" aria-label="Retour au dashboard">&#8592;</a>
+        <span class="navbar__brand">ChapterPrep</span>
+      </div>
+      <div class="navbar__user">
+        <span class="navbar__username" id="nav-username"></span>
+        <button class="btn btn--outline" id="logout-btn">Déconnexion</button>
+      </div>
+    </header>
+
+    <!-- ── Contenu principal ─────────────────────── -->
+    <main class="dashboard">
+
+      <!-- En-tête du livre -->
+      <section class="book-header">
+        <div class="book-header__info">
+          <p class="book-header__label">Livre</p>
+          <h2 class="book-header__title" id="book-title">…</h2>
+          <p class="book-header__author" id="book-author"></p>
+        </div>
+        <button class="btn btn--primary" id="add-chapter-btn">+ Ajouter un chapitre</button>
+      </section>
+
+      <!-- Liste des chapitres -->
+      <section class="chapters">
+        <h3 class="books__title">Chapitres</h3>
+
+        <!-- État vide -->
+        <div class="empty-state" id="empty-state">
+          <div class="empty-state__icon">📄</div>
+          <p class="empty-state__text">Aucun chapitre pour l'instant.<br />Colle le texte d'un chapitre pour commencer.</p>
+          <button class="btn btn--primary" id="add-chapter-empty-btn">+ Ajouter le premier chapitre</button>
+        </div>
+
+        <!-- Liste -->
+        <ul class="chapter-list" id="chapter-list" hidden></ul>
+      </section>
+    </main>
+
+    <!-- ── Modale : Ajouter un chapitre ─────────── -->
+    <div class="modal-overlay" id="modal-overlay" hidden>
+      <div class="modal modal--wide" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal__header">
+          <h3 class="modal__title" id="modal-title">Nouveau chapitre</h3>
+          <button class="modal__close" id="modal-close" aria-label="Fermer">&times;</button>
+        </div>
+        <form id="add-chapter-form" class="modal__form" novalidate>
+          <div class="form__group">
+            <label for="chapter-title" class="form__label">Titre du chapitre</label>
+            <input type="text" id="chapter-title" class="form__input" placeholder="ex: Chapitre 1 — L'arrivée" required />
+          </div>
+
+          <div class="form__group">
+            <label for="chapter-content" class="form__label">Texte du chapitre</label>
+            <textarea
+              id="chapter-content"
+              class="form__input form__textarea"
+              placeholder="Colle ici le texte du chapitre…"
+              rows="10"
+              required
+            ></textarea>
+          </div>
+
+          <!-- Statistiques live -->
+          <div class="word-stats" id="word-stats" hidden>
+            <div class="word-stats__count">
+              <span class="word-stats__value" id="word-count">0</span>
+              <span class="word-stats__label">mots détectés</span>
+            </div>
+            <div class="word-stats__divider"></div>
+            <div class="word-stats__recommendation">
+              <span class="word-stats__label">Mots à extraire recommandés&nbsp;:</span>
+              <strong class="word-stats__rec-value" id="rec-value">5</strong>
+            </div>
+          </div>
+
+          <!-- Contrôle manuel du nombre de mots à extraire -->
+          <div class="form__group" id="extract-group" hidden>
+            <div class="extract-label-row">
+              <label for="words-to-extract" class="form__label">Mots à extraire par le LLM</label>
+              <span class="extract-current" id="extract-current">5</span>
+            </div>
+            <input
+              type="range"
+              id="words-to-extract"
+              class="form__range"
+              min="3"
+              max="60"
+              value="5"
+            />
+            <p class="form__hint">5 mots pour 100 mots de texte est une bonne base. Ajuste selon la densité du vocabulaire.</p>
+          </div>
+
+          <p class="form__error" id="add-chapter-error" aria-live="polite"></p>
+          <div class="modal__actions">
+            <button type="button" class="btn btn--ghost" id="modal-cancel-btn">Annuler</button>
+            <button type="submit" class="btn btn--primary" id="add-chapter-submit-btn">Enregistrer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script src="book.js"></script>
+  </body>
+</html>
