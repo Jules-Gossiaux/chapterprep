@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChapterPrep — Dashboard</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="dashboard.css" />
+  </head>
+  <body class="dashboard-body">
+
+    <!-- ── Navbar ─────────────────────────────────── -->
+    <header class="navbar">
+      <span class="navbar__brand">ChapterPrep</span>
+      <div class="navbar__user">
+        <span class="navbar__username" id="nav-username"></span>
+        <button class="btn btn--outline" id="logout-btn">Déconnexion</button>
+      </div>
+    </header>
+
+    <!-- ── Contenu principal ──────────────────────── -->
+    <main class="dashboard">
+
+      <!-- Bandeau de bienvenue -->
+      <section class="welcome">
+        <div>
+          <h2 class="welcome__title">Bonjour, <span id="welcome-username"></span> 👋</h2>
+          <p class="welcome__sub">Choisis un livre pour réviser son vocabulaire, ou ajoutes-en un nouveau.</p>
+        </div>
+        <button class="btn btn--primary" id="add-book-btn">+ Ajouter un livre</button>
+      </section>
+
+      <!-- Grille de livres -->
+      <section class="books">
+        <h3 class="books__title">Mes livres</h3>
+
+        <!-- État vide — masqué quand des livres existent -->
+        <div class="empty-state" id="empty-state">
+          <div class="empty-state__icon">📚</div>
+          <p class="empty-state__text">Tu n'as encore aucun livre.<br />Ajoute-en un pour commencer.</p>
+          <button class="btn btn--primary" id="add-book-empty-btn">+ Ajouter mon premier livre</button>
+        </div>
+
+        <!-- Grille — affichée quand des livres existent -->
+        <ul class="book-grid" id="book-grid" hidden></ul>
+      </section>
+    </main>
+
+    <!-- ── Modal : Ajouter un livre ───────────────── -->
+    <div class="modal-overlay" id="modal-overlay" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal__header">
+          <h3 class="modal__title" id="modal-title">Nouveau livre</h3>
+          <button class="modal__close" id="modal-close" aria-label="Fermer">&times;</button>
+        </div>
+        <form id="add-book-form" class="modal__form" novalidate>
+          <div class="form__group">
+            <label for="book-title" class="form__label">Titre</label>
+            <input type="text" id="book-title" class="form__input" placeholder="ex: L'Étranger" required />
+          </div>
+          <div class="form__group">
+            <label for="book-author" class="form__label">Auteur</label>
+            <input type="text" id="book-author" class="form__input" placeholder="ex: Albert Camus" />
+          </div>
+          <div class="form__group">
+            <label for="book-language" class="form__label">Langue du livre</label>
+            <select id="book-language" class="form__input">
+              <option value="fr">Français</option>
+              <option value="en">Anglais</option>
+              <option value="es">Espagnol</option>
+              <option value="de">Allemand</option>
+              <option value="it">Italien</option>
+            </select>
+          </div>
+          <p class="form__error" id="add-book-error" aria-live="polite"></p>
+          <div class="modal__actions">
+            <button type="button" class="btn btn--ghost" id="modal-cancel-btn">Annuler</button>
+            <button type="submit" class="btn btn--primary" id="add-book-submit-btn">Créer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+  </body>
+</html>

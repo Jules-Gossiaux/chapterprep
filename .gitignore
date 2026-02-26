@@ -1,0 +1,28 @@
+# ── Environnement Python ──────────────────────
+backend/.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# ── Secrets & config locale ───────────────────
+backend/.env
+.env
+
+# ── Base de données locale ────────────────────
+backend/chapterprep.db
+*.db
+*.sqlite
+*.sqlite3
+
+# ── OS ────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Éditeurs ──────────────────────────────────
+.vscode/settings.json
+*.swp
+*.swo
