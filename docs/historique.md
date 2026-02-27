@@ -191,3 +191,12 @@ Cause racine : `.modal__form { display: flex }` dans `dashboard.css` (ligne 282)
 
 - `style.css` — modifié : ajout de `[hidden] { display: none !important; }` en règle globale (ligne 27), garantissant que l'attribut `hidden` est toujours respecté quelle que soit la règle `display` définie par les classes CSS auteur
 
+---
+
+## Commit
+
+`1c1a613` — feat: extraction vocabulaire Gemini + sélection mots en modale deux vues
+
+
+
+## commit: 
