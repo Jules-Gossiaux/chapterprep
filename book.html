@@ -60,8 +60,33 @@
         </div>
         <form id="add-chapter-form" class="modal__form" novalidate>
           <div class="form__group">
-            <label for="chapter-title" class="form__label">Titre du chapitre</label>
-            <input type="text" id="chapter-title" class="form__input" placeholder="ex: Chapitre 1 — L'arrivée" required />
+            <label for="chapter-number" class="form__label">Numéro du chapitre</label>
+            <input type="number" id="chapter-number" class="form__input" min="1" placeholder="ex : 3" required />
+          </div>
+
+          <div class="form__group">
+            <label for="target-language" class="form__label">Langue du livre</label>
+            <input type="text" id="target-language" class="form__input" placeholder="ex : anglais" required />
+          </div>
+
+          <div class="form__group">
+            <label for="chapter-level" class="form__label">Ton niveau</label>
+            <select id="chapter-level" class="form__input">
+              <option value="A1">A1 — Débutant</option>
+              <option value="A2">A2 — Élémentaire</option>
+              <option value="B1">B1 — Intermédiaire</option>
+              <option value="B2" selected>B2 — Intermédiaire avancé</option>
+              <option value="C1">C1 — Avancé</option>
+              <option value="C2">C2 — Maîtrise</option>
+            </select>
+          </div>
+
+          <div class="form__group">
+            <label for="translation-mode" class="form__label">Mode d’apprentissage</label>
+            <select id="translation-mode" class="form__input">
+              <option value="translation">Traduction en français</option>
+              <option value="definition">Définition dans la langue cible</option>
+            </select>
           </div>
 
           <div class="form__group">
@@ -106,11 +131,22 @@
           </div>
 
           <p class="form__error" id="add-chapter-error" aria-live="polite"></p>
-          <div class="modal__actions">
+          <div class="modal__actions" id="modal-actions">
             <button type="button" class="btn btn--ghost" id="modal-cancel-btn">Annuler</button>
             <button type="submit" class="btn btn--primary" id="add-chapter-submit-btn">Enregistrer</button>
           </div>
         </form>
+
+        <!-- ── Vue sélection des mots ──────────────── -->
+        <div id="word-selection-view" hidden>
+          <p class="word-selection-hint" id="word-selection-hint"></p>
+          <ul class="word-selection-list" id="word-list"></ul>
+          <p class="form__error" id="word-selection-error" aria-live="polite"></p>
+          <div class="modal__actions">
+            <button type="button" class="btn btn--ghost" id="back-to-form-btn">← Retour</button>
+            <button type="button" class="btn btn--primary" id="confirm-selection-btn">Confirmer la sélection</button>
+          </div>
+        </div>
       </div>
     </div>
 

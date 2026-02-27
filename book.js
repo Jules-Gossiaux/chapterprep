@@ -48,7 +48,29 @@ const extractGroup       = document.getElementById("extract-group");
 const wordsSlider        = document.getElementById("words-to-extract");
 const extractCurrent     = document.getElementById("extract-current");
 
+// Nouveaux champs du formulaire
+const chapterNumberInput = document.getElementById("chapter-number");
+const targetLangInput    = document.getElementById("target-language");
+const levelSelect        = document.getElementById("chapter-level");
+const translationSelect  = document.getElementById("translation-mode");
+
+// Vue sélection des mots
+const modalTitleEl        = document.getElementById("modal-title");
+const wordSelectionView   = document.getElementById("word-selection-view");
+const wordListEl          = document.getElementById("word-list");
+const wordSelectionHint   = document.getElementById("word-selection-hint");
+const wordSelectionError  = document.getElementById("word-selection-error");
+const confirmSelectionBtn = document.getElementById("confirm-selection-btn");
+const backToFormBtn       = document.getElementById("back-to-form-btn");
+
 navUsername.textContent = username;
+
+// Titre du livre chargé — utilisé pour pré-remplir le champ title lors de la soumission
+let currentBookTitle = "";
+// Id du chapitre créé par POST /chapters, non encore confirmé (null si aucun)
+let pendingChapterId = null;
+// Mots suggérés par Gemini, mémorisés pour la confirmation
+let pendingWords     = [];
 
 // ─────────────────────────────────────────────
 //  Logout
@@ -144,12 +166,30 @@ function openModal() {
   wordStatsEl.hidden          = true;
   extractGroup.hidden         = true;
   delete wordsSlider.dataset.touched;
+  addChapterForm.hidden       = false;
+  wordSelectionView.hidden    = true;
+  modalTitleEl.textContent    = "Nouveau chapitre";
   modalOverlay.hidden = false;
-  document.getElementById("chapter-title").focus();
+  chapterNumberInput.focus();
 }
 
-function closeModal() {
-  modalOverlay.hidden = true;
+async function closeModal() {
+  // Ferme immédiatement la modale
+  modalOverlay.hidden      = true;
+  // Remet en état initial pour la prochaine ouverture
+  addChapterForm.hidden    = false;
+  wordSelectionView.hidden = true;
+  modalTitleEl.textContent = "Nouveau chapitre";
+
+  // Nettoyage asynchrone : supprime le chapitre créé mais non confirmé
+  if (pendingChapterId !== null) {
+    const id     = pendingChapterId;
+    pendingChapterId = null;
+    pendingWords     = [];
+    try {
+      await authFetch(`${API_URL}/chapters/${id}`, { method: "DELETE" });
+    } catch { /* ignore */ }
+  }
 }
 
 addChapterBtn.addEventListener("click", openModal);
@@ -166,20 +206,24 @@ function renderChapter(chapter, index) {
   const li = document.createElement("li");
   li.className = "chapter-card";
   li.dataset.id = chapter.id;
+
+  const modeLabel = chapter.translation_mode === "definition" ? "Définition" : "Traduction";
+
   li.innerHTML = `
     <div class="chapter-card__index">${index}</div>
     <div class="chapter-card__body">
-      <p class="chapter-card__title">${escapeHtml(chapter.title)}</p>
+      <p class="chapter-card__title">Chapitre ${chapter.chapter_number}</p>
       <div class="chapter-card__meta">
-        <span class="chapter-card__stat"><strong>${chapter.word_count.toLocaleString("fr-FR")}</strong> mots</span>
-        <span class="chapter-card__stat"><strong>${chapter.words_to_extract}</strong> mots à extraire</span>
+        <span class="chapter-card__stat"><strong>${escapeHtml(chapter.target_language)}</strong></span>
+        <span class="chapter-card__stat">Niveau <strong>${escapeHtml(chapter.level)}</strong></span>
+        <span class="chapter-card__stat">${modeLabel}</span>
       </div>
     </div>
     <button class="chapter-card__delete" aria-label="Supprimer ce chapitre" title="Supprimer">🗑</button>
   `;
 
   li.querySelector(".chapter-card__delete").addEventListener("click", () =>
-    deleteChapter(chapter.id, chapter.title, li)
+    deleteChapter(chapter.id, chapter.chapter_number, li)
   );
 
   return li;
@@ -205,9 +249,10 @@ async function loadBook() {
     const res = await authFetch(`${API_URL}/books/${bookId}`);
     if (!res.ok) { window.location.href = "app.html"; return; }
     const book = await res.json();
-    bookTitleEl.textContent  = book.title;
-    bookAuthorEl.textContent = book.author || "";
-    document.title = `ChapterPrep — ${book.title}`;
+    bookTitleEl.textContent   = book.title;
+    bookAuthorEl.textContent  = book.author || "";
+    document.title            = `ChapterPrep — ${book.title}`;
+    currentBookTitle          = book.title;   // utilisé lors de la soumission du formulaire
   } catch {
     window.location.href = "app.html";
   }
@@ -215,10 +260,14 @@ async function loadBook() {
 
 async function loadChapters() {
   try {
-    const res = await authFetch(`${API_URL}/books/${bookId}/chapters`);
+    const res = await authFetch(`${API_URL}/chapters`);
     if (!res.ok) { renderChapterList([]); return; }
     const chapters = await res.json();
-    renderChapterList(Array.isArray(chapters) ? chapters : []);
+    // Filtre côté client sur le titre du livre (les chapitres sont liés par le titre stocké)
+    const filtered = Array.isArray(chapters)
+      ? chapters.filter(ch => ch.title === currentBookTitle)
+      : [];
+    renderChapterList(filtered);
   } catch {
     renderChapterList([]);
   }
@@ -231,44 +280,158 @@ addChapterForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   addChapterError.textContent = "";
 
-  const title   = document.getElementById("chapter-title").value.trim();
-  const content = contentTextarea.value.trim();
+  const chapterNumber  = parseInt(chapterNumberInput.value, 10);
+  const targetLanguage = targetLangInput.value.trim();
+  const level          = levelSelect.value;
+  const translationMode = translationSelect.value;
+  const text           = contentTextarea.value.trim();
   const wordsToExtract = parseInt(wordsSlider.value, 10);
 
-  if (!title)   { addChapterError.textContent = "Le titre est obligatoire."; return; }
-  if (!content) { addChapterError.textContent = "Le contenu est obligatoire."; return; }
+  if (!chapterNumber || isNaN(chapterNumber) || chapterNumber < 1) { addChapterError.textContent = "Le numéro de chapitre est obligatoire."; return; }
+  if (!targetLanguage)  { addChapterError.textContent = "La langue du livre est obligatoire."; return; }
+  if (!text)            { addChapterError.textContent = "Le contenu est obligatoire."; return; }
+  if (!currentBookTitle) { addChapterError.textContent = "Impossible de récupérer le titre du livre."; return; }
 
-  setLoading(addChapterSubmit, "Enregistrement…");
+  setLoading(addChapterSubmit, "Extraction en cours…");
 
   try {
-    const res = await authFetch(`${API_URL}/books/${bookId}/chapters`, {
+    const res = await authFetch(`${API_URL}/chapters`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, content, words_to_extract: wordsToExtract }),
+      body: JSON.stringify({
+        title:            currentBookTitle,
+        chapter_number:   chapterNumber,
+        text,
+        target_language:  targetLanguage,
+        words_to_extract: wordsToExtract,
+        level,
+        translation_mode: translationMode,
+      }),
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) { addChapterError.textContent = data.detail || "Erreur lors de l'enregistrement."; return; }
 
-    closeModal();
-    await loadChapters();
-  } catch {
-    addChapterError.textContent = "Impossible de contacter le serveur.";
+    renderWordSelection(data.chapter.id, data.words);
+  } catch (err) {
+    if (err.message !== "Unauthorized") {
+      addChapterError.textContent = "Impossible de contacter le serveur.";
+    }
   } finally {
     resetBtn(addChapterSubmit, "Enregistrer");
   }
 });
 
 // ─────────────────────────────────────────────
+//  Sélection des mots extraits
+// ─────────────────────────────────────────────
+function renderWordSelection(chapterId, words) {
+  pendingChapterId               = chapterId;
+  pendingWords                   = Array.isArray(words) ? words : [];
+  wordSelectionError.textContent = "";
+  wordListEl.innerHTML           = "";
+
+  if (pendingWords.length === 0) {
+    wordSelectionHint.textContent = "";
+    const li = document.createElement("li");
+    li.className   = "word-item word-item--empty";
+    li.textContent = "Gemini n'a retourné aucun mot.";
+    wordListEl.appendChild(li);
+  } else {
+    const n = pendingWords.length;
+    wordSelectionHint.textContent =
+      `${n} mot${n > 1 ? "s" : ""} suggéré${n > 1 ? "s" : ""} — décochez ceux que vous ne souhaitez pas retenir.`;
+    pendingWords.forEach((w, i) => {
+      const li   = document.createElement("li");
+      li.className     = "word-item";
+      li.dataset.index = i;
+      const cbId = `word-cb-${i}`;
+      li.innerHTML = `
+        <label class="word-item__label" for="${cbId}">
+          <input type="checkbox" id="${cbId}" class="word-item__checkbox" checked />
+          <span class="word-item__word">${escapeHtml(w.word)}</span>
+          <span class="word-item__base">(${escapeHtml(w.base_form)})</span>
+          <span class="word-item__arrow">→</span>
+          <span class="word-item__output">${escapeHtml(w.output)}</span>
+        </label>
+      `;
+      wordListEl.appendChild(li);
+    });
+  }
+
+  addChapterForm.hidden    = true;
+  wordSelectionView.hidden = false;
+  modalTitleEl.textContent = "Mots extraits";
+
+}
+
+backToFormBtn.addEventListener("click", async () => {
+  // Supprime silencieusement le chapitre non confirmé
+  if (pendingChapterId !== null) {
+    const id     = pendingChapterId;
+    pendingChapterId = null;
+    pendingWords     = [];
+    try {
+      await authFetch(`${API_URL}/chapters/${id}`, { method: "DELETE" });
+    } catch { /* ignore */ }
+  }
+  wordSelectionView.hidden = true;
+  addChapterForm.hidden    = false;
+  modalTitleEl.textContent = "Nouveau chapitre";
+
+});
+
+confirmSelectionBtn.addEventListener("click", async () => {
+  wordSelectionError.textContent = "";
+
+  const selectedIndices = Array.from(
+    wordListEl.querySelectorAll(".word-item__checkbox:checked")
+  ).map((cb) => parseInt(cb.closest(".word-item").dataset.index, 10));
+
+  if (selectedIndices.length === 0) {
+    wordSelectionError.textContent = "Veuillez sélectionner au moins un mot.";
+    return;
+  }
+
+  const selectedWords = selectedIndices.map((i) => pendingWords[i]);
+
+  setLoading(confirmSelectionBtn, "Enregistrement…");
+
+  try {
+    const res = await authFetch(`${API_URL}/chapters/${pendingChapterId}/words`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ words: selectedWords }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      wordSelectionError.textContent = data.detail || "Erreur lors de l'enregistrement.";
+      return;
+    }
+
+    pendingChapterId = null;
+    pendingWords     = [];
+    closeModal();
+    await loadChapters();
+  } catch (err) {
+    if (err.message !== "Unauthorized") {
+      wordSelectionError.textContent = "Impossible de contacter le serveur.";
+    }
+  } finally {
+    resetBtn(confirmSelectionBtn, "Confirmer la sélection");
+  }
+});
+
+// ─────────────────────────────────────────────
 //  Suppression d'un chapitre
 // ─────────────────────────────────────────────
-async function deleteChapter(chapterId, chapterTitle, cardEl) {
-  if (!confirm(`Supprimer "${chapterTitle}" ? Cette action est irréversible.`)) return;
+async function deleteChapter(chapterId, chapterNumber, cardEl) {
+  if (!confirm(`Supprimer le chapitre ${chapterNumber} ? Cette action est irréversible.`)) return;
 
   cardEl.classList.add("chapter-card--deleting");
 
   try {
-    const res = await authFetch(`${API_URL}/books/${bookId}/chapters/${chapterId}`, {
+    const res = await authFetch(`${API_URL}/chapters/${chapterId}`, {
       method: "DELETE",
     });
 
@@ -280,7 +443,6 @@ async function deleteChapter(chapterId, chapterTitle, cardEl) {
     }
 
     cardEl.remove();
-    // Recalcule les numéros
     document.querySelectorAll(".chapter-card__index").forEach((el, i) => {
       el.textContent = i + 1;
     });
@@ -288,14 +450,21 @@ async function deleteChapter(chapterId, chapterTitle, cardEl) {
       chapterList.hidden  = true;
       emptyState.hidden   = false;
     }
-  } catch {
-    alert("Impossible de contacter le serveur.");
-    cardEl.classList.remove("chapter-card--deleting");
+  } catch (err) {
+    if (err.message !== "Unauthorized") {
+      alert("Impossible de contacter le serveur.");
+      cardEl.classList.remove("chapter-card--deleting");
+    }
   }
 }
 
 // ─────────────────────────────────────────────
 //  Initialisation
 // ─────────────────────────────────────────────
-loadBook();
-loadChapters();
+// loadBook() puis loadChapters() en séquence — loadChapters filtre par currentBookTitle
+async function init() {
+  await loadBook();
+  await loadChapters();
+}
+
+init();

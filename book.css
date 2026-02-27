@@ -162,6 +162,7 @@
 ─────────────────────────────────────────── */
 .modal--wide {
   max-width: 660px;
+  overflow-y: auto;
 }
 
 /* ───────────────────────────────────────────
@@ -269,3 +270,89 @@
     display: none;
   }
 }
+
+/* ───────────────────────────────────────────
+   Vue sélection des mots extraits
+─────────────────────────────────────────── */
+.word-selection-hint {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+}
+
+.word-selection-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Scrollbar discrète */
+.word-selection-list::-webkit-scrollbar        { width: 6px; }
+.word-selection-list::-webkit-scrollbar-track  { background: transparent; }
+.word-selection-list::-webkit-scrollbar-thumb  { background: var(--color-border); border-radius: 3px; }
+
+.word-item--empty {
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  padding: 0.5rem 0;
+}
+
+.word-item__label {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.85rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+  flex-wrap: wrap;
+  user-select: none;
+}
+
+.word-item__label:hover {
+  background: var(--color-bg);
+  border-color: var(--color-primary);
+}
+
+.word-item__checkbox {
+  accent-color: var(--color-primary);
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.word-item__word {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.word-item__base {
+  font-size: 0.82rem;
+  color: var(--color-muted);
+}
+
+.word-item__arrow {
+  color: var(--color-primary);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.word-item__output {
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+/* Carte décochée : visuel atténué */
+.word-item:has(.word-item__checkbox:not(:checked)) .word-item__label {
+  opacity: 0.4;
+}
+

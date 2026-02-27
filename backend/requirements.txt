@@ -5,3 +5,4 @@ pydantic[email]
 passlib
 python-jose[cryptography]
 python-dotenv
+httpx

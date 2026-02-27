@@ -6,18 +6,35 @@ import sqlite3
 from database import get_connection
 
 
-# ─── Lecture ─────────────────────────────────────────────────
+# ─── Écriture ────────────────────────────────────────────────
 
-def get_chapters_by_book(book_id: int) -> list[sqlite3.Row]:
+def create_chapter(
+    user_id: int,
+    title: str,
+    chapter_number: int,
+    text: str,
+    target_language: str,
+    level: str,
+    translation_mode: str,
+) -> int:
+    """Insère un nouveau chapitre et retourne son id."""
     conn = get_connection()
     try:
-        return conn.execute(
-            "SELECT * FROM chapters WHERE book_id = ? ORDER BY created_at ASC",
-            (book_id,),
-        ).fetchall()
+        with conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO chapters
+                    (user_id, title, chapter_number, text, target_language, level, translation_mode)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (user_id, title, chapter_number, text, target_language, level, translation_mode),
+            )
+            return cursor.lastrowid
     finally:
         conn.close()
 
+
+# ─── Lecture ─────────────────────────────────────────────────
 
 def get_chapter_by_id(chapter_id: int) -> sqlite3.Row | None:
     conn = get_connection()
@@ -29,32 +46,16 @@ def get_chapter_by_id(chapter_id: int) -> sqlite3.Row | None:
         conn.close()
 
 
-# ─── Écriture ─────────────────────────────────────────────────
-
-def create_chapter(
-    book_id: int,
-    title: str,
-    content: str,
-    word_count: int,
-    words_to_extract: int,
-) -> int:
-    """Insère un nouveau chapitre et retourne son id."""
+def get_chapters_by_user(user_id: int) -> list[sqlite3.Row]:
     conn = get_connection()
     try:
-        with conn:
-            cursor = conn.execute(
-                """
-                INSERT INTO chapters (book_id, title, content, word_count, words_to_extract)
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                (book_id, title, content, word_count, words_to_extract),
-            )
-            return cursor.lastrowid
+        return conn.execute(
+            "SELECT * FROM chapters WHERE user_id = ? ORDER BY created_at DESC",
+            (user_id,),
+        ).fetchall()
     finally:
         conn.close()
 
-
-# ─── Suppression ─────────────────────────────────────────────
 
 def delete_chapter(chapter_id: int) -> None:
     conn = get_connection()

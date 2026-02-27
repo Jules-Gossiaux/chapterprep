@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, field_validator
 
 
 # ── Inscription ──────────────────────────────────────────────
@@ -91,38 +91,100 @@ class BookResponse(BaseModel):
 
 # ── Chapitres ────────────────────────────────────────────────
 
-def recommend_words(word_count: int) -> int:
-    """Recommande ~5 mots à extraire pour 100 mots de texte (min 5, max 60)."""
-    return max(5, min(round(word_count * 0.05), 60))
+_ALLOWED_LEVELS = {"A1", "A2", "B1", "B2", "C1", "C2"}
+_ALLOWED_TRANSLATION_MODES = {"translation", "definition"}
 
 
-class ChapterCreate(BaseModel):
-    title:            str
-    content:          str
-    words_to_extract: Optional[int] = Field(default=None, ge=1, le=200)
+class ChapterCreateRequest(BaseModel):
+    title:            str           # titre du livre
+    chapter_number:   int           # numéro du chapitre
+    text:             str           # texte collé
+    target_language:  str           # ex: "anglais"
+    words_to_extract: int           # nombre de mots que Gemini doit extraire (1–50)
+    level:            str           # A1 à C2
+    translation_mode: str           # "translation" ou "definition"
 
-    @field_validator("title")
+    @field_validator("title", "text", "target_language")
     @classmethod
-    def title_valid(cls, v: str) -> str:
+    def not_empty(cls, v: str) -> str:
         v = v.strip()
         if not v:
-            raise ValueError("Le titre du chapitre ne peut pas être vide.")
+            raise ValueError("Ce champ ne peut pas être vide.")
         return v
 
-    @field_validator("content")
+    @field_validator("chapter_number")
     @classmethod
-    def content_valid(cls, v: str) -> str:
-        v = v.strip()
-        if not v:
-            raise ValueError("Le contenu ne peut pas être vide.")
+    def chapter_number_valid(cls, v: int) -> int:
+        if v < 1:
+            raise ValueError("Le numéro de chapitre doit être supérieur à 0.")
+        return v
+
+    @field_validator("words_to_extract")
+    @classmethod
+    def words_to_extract_valid(cls, v: int) -> int:
+        if not (1 <= v <= 50):
+            raise ValueError("Le nombre de mots doit être compris entre 1 et 50.")
+        return v
+
+    @field_validator("level")
+    @classmethod
+    def level_valid(cls, v: str) -> str:
+        if v not in _ALLOWED_LEVELS:
+            raise ValueError(f"Niveau invalide. Valeurs acceptées : {sorted(_ALLOWED_LEVELS)}")
+        return v
+
+    @field_validator("translation_mode")
+    @classmethod
+    def translation_mode_valid(cls, v: str) -> str:
+        if v not in _ALLOWED_TRANSLATION_MODES:
+            raise ValueError(f"Mode invalide. Valeurs acceptées : {sorted(_ALLOWED_TRANSLATION_MODES)}")
         return v
 
 
 class ChapterResponse(BaseModel):
     id:               int
-    book_id:          int
+    user_id:          int
     title:            str
-    content:          str
-    word_count:       int
-    words_to_extract: int
+    chapter_number:   int
+    target_language:  str
+    level:            str
+    translation_mode: str
     created_at:       str
+
+
+# ── Mots extraits ────────────────────────────────────────────
+
+class WordItem(BaseModel):
+    """Un mot tel que retourné par Gemini (avant confirmation)."""
+    word:      str
+    base_form: str
+    output:    str
+
+
+class ExtractionResponse(BaseModel):
+    """Réponse du endpoint POST /chapters : chapitre créé + mots suggérés."""
+    chapter: ChapterResponse
+    words:   list[WordItem]
+
+
+class WordsConfirmRequest(BaseModel):
+    """Corps du endpoint POST /chapters/{id}/words : sélection finale du user."""
+    words: list[WordItem]
+
+    @field_validator("words")
+    @classmethod
+    def words_not_empty(cls, v: list) -> list:
+        if not v:
+            raise ValueError("La liste de mots ne peut pas être vide.")
+        return v
+
+
+class WordResponse(BaseModel):
+    id:         int
+    chapter_id: int
+    user_id:    int
+    word:       str
+    base_form:  str
+    output:     str
+    status:     str
+    created_at: str

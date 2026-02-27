@@ -249,7 +249,8 @@
   box-shadow: 0 8px 40px rgba(0,0,0,0.18);
   width: 100%;
   max-width: 440px;
-  overflow: hidden;
+  max-height: 90vh;        /* ← ajout */
+  overflow-y: auto;
 }
 
 .modal__header {

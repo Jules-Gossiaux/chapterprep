@@ -124,3 +124,70 @@
 - `book.js` — modifié : `authFetch` lance `throw new Error("Unauthorized")` après la redirection 401 pour stopper l'exécution
 - `book.js` — modifié : condition simplifiée `if (!res.ok && res.status !== 204)` → `if (!res.ok)` dans `deleteChapter`
 - `style.css` — modifié : ajout de la classe `.section-error`
+
+---
+
+## Extraction de vocabulaire via Gemini (nouvelle fonctionnalité)
+
+- `backend/database.py` — modifié : refonte de la table `chapters` (user-level, suppression du FK `book_id`, ajout de `title` chaîne, `chapter_number`, `target_language`, `level`, `translation_mode`) ; ajout de la table `words` (FK → chapters ON DELETE CASCADE, `word`, `base_form`, `output`)
+- `backend/models.py` — modifié : ajout de `ChapterCreateRequest` (champs : title, chapter_number, text, target_language, words_to_extract, level, translation_mode), `ChapterResponse`, `ExtractionResponse`, `WordItem`, `WordsConfirmRequest`, `WordResponse`
+- `backend/config.py` — modifié : ajout de `GEMINI_API_KEY` lu depuis `.env`
+- `backend/prompts/extract_vocabulary.py` — créé : template de prompt Gemini (langue, niveau, mode traduction/définition, nombre de mots)
+- `backend/services/vocabulary_service.py` — créé : appel Gemini 2.5 Flash via `httpx` (clé dans le header `x-goog-api-key`), parsing JSON de la réponse, retour d'une liste de `WordItem`
+- `backend/repositories/word_repository.py` — créé : `create_words`, `get_words_by_chapter_and_user`, `get_words_by_chapter`
+- `backend/repositories/chapter_repository.py` — réécrit : `create_chapter`, `get_chapter_by_id`, `get_chapters_by_user`, `delete_chapter` (chapitres liés à `user_id`, plus de `book_id`)
+- `backend/services/chapter_service.py` — réécrit : `create_chapter_and_extract` (crée le chapitre puis appelle Gemini), `get_chapter` (403 uniforme sans leak d'existence), `delete_chapter`
+- `backend/routes/chapters.py` — réécrit : `GET /chapters`, `POST /chapters`, `DELETE /chapters/{chapter_id}`, `POST /chapters/{chapter_id}/words`, `GET /chapters/{chapter_id}/words`
+
+---
+
+## Corrections frontend — routes chapitres et champs renommés (5 bugs)
+
+- `backend/models.py` — modifié : `word_count` renommé `words_to_extract` dans `ChapterCreateRequest` ; champ `level` restauré
+- `backend/services/chapter_service.py` — modifié : `get_chapter` et `delete_chapter` retournent systématiquement 403 (même quand le chapitre n'existe pas) pour éviter le leak d'information
+- `backend/repositories/chapter_repository.py` — modifié : ajout de `delete_chapter(chapter_id)`
+- `backend/repositories/word_repository.py` — modifié : ajout de `get_words_by_chapter_and_user(chapter_id, user_id)` (filtre SQL, pas Python)
+- `backend/services/vocabulary_service.py` — modifié : clé Gemini déplacée du query param `?key=` vers le header HTTP `x-goog-api-key`
+- `backend/routes/chapters.py` — modifié : `word_count` → `words_to_extract` dans l'appel au service ; utilisation de `get_words_by_chapter_and_user` dans `confirm_words`
+- `book.html` — modifié : anciens champs `chapter-title` / `content` remplacés par `chapter-number` (number), `target-language` (text), `chapter-level` (select A1–C2, défaut B2), `translation-mode` (select traduction/définition) ; textarea renommée `chapter-content`
+- `book.js` — modifié : nouveaux sélecteurs (`chapterNumberInput`, `targetLangInput`, `levelSelect`, `translationSelect`) ; variable `currentBookTitle` ; `openModal` fait le focus sur `chapterNumberInput` ; `renderChapter` affiche `chapter_number`, `target_language`, `level` ; `loadBook` sauvegarde `currentBookTitle` ; `loadChapters` appelle `GET /chapters` et filtre par titre côté client ; formulaire soumet `POST /chapters` avec les 7 nouveaux champs ; `deleteChapter` appelle `DELETE /chapters/{id}` ; `init()` séquence `loadBook` puis `loadChapters`
+
+---
+
+## Sélection des mots extraits (modale deux vues)
+
+- `book.html` — modifié : ajout du bloc `#word-selection-view` (caché par défaut) après `</form>` dans la modale : `#word-selection-hint`, `#word-list` (liste des cartes), `#word-selection-error`, boutons `#back-to-form-btn` et `#confirm-selection-btn`
+- `book.js` — modifié :
+  - Sélecteurs : ajout `modalTitleEl`, `wordSelectionView`, `wordListEl`, `wordSelectionHint`, `wordSelectionError`, `confirmSelectionBtn`, `backToFormBtn`
+  - Variables : `pendingChapterId = null`, `pendingWords = []` stockés en JS (pas dans le DOM)
+  - `openModal()` : réinitialise le titre ("Nouveau chapitre") et masque la vue sélection
+  - `closeModal()` : devient `async` ; ferme immédiatement la modale puis supprime silencieusement le chapitre non confirmé (`DELETE /chapters/{id}`) si `pendingChapterId` est non nul
+  - Submit handler : remplace l'ancien `closeModal()` par `renderWordSelection(data.chapter.id, data.words)` après un `POST /chapters` réussi
+  - `renderWordSelection(chapterId, words)` : affiche les mots sous forme de cartes à cocher (toutes cochées par défaut) avec les trois champs `word`, `base_form`, `output` ; message explicite si aucun mot ; bascule le titre de la modale vers "Mots extraits"
+  - Handler "Retour" : supprime le chapitre non confirmé puis revient au formulaire
+  - Handler "Confirmer la sélection" : lit les cases cochées par leur index dans `pendingWords`, bloque si sélection vide, appelle `POST /chapters/{id}/words`, affiche l'erreur inline en cas d'échec, ferme la modale et recharge la liste en cas de succès
+- `book.css` — modifié : ajout des styles `.word-selection-hint`, `.word-selection-list` (scrollable, max-height 360 px), `.word-item__label` (carte cliquable avec hover), `.word-item__word/base/arrow/output`, effacement visuel (opacité 40 %) des cartes décochées via `:has()`
+
+---
+
+## Masquage du bouton Annuler / Enregistrer pendant la vue sélection
+
+- `book.html` — modifié : ajout de `id="modal-actions"` sur la `<div class="modal__actions">` du formulaire pour permettre son contrôle via JS
+- `book.js` — modifié : ajout du sélecteur `modalActionsEl` ; `renderWordSelection` passe `modalActionsEl.hidden = true` pour masquer les boutons Annuler/Enregistrer pendant la vue mots extraits ; `backToFormBtn` et `closeModal` passent `modalActionsEl.hidden = false` pour les restaurer
+
+---
+
+## Correctifs JS (3 points)
+
+- `book.js` — modifié : validation `chapterNumber` renforcée avec `isNaN(chapterNumber)` explicite en plus du test falsy
+- `book.js` — modifié : `res.json().catch(() => ({}))` appliqué sur le `POST /chapters` (robustesse si la réponse d'erreur n'est pas du JSON valide)
+- `book.js` — vérifié : `closeModal()` gère déjà `pendingChapterId !== null` et appelle `DELETE /chapters/{id}` silencieusement (comportement identique au bouton Retour)
+
+---
+
+## Correction CSS — attribut `[hidden]` écrasé par `.modal__form`
+
+Cause racine : `.modal__form { display: flex }` dans `dashboard.css` (ligne 282) avait une spécificité suffisante pour court-circuiter la règle navigateur de l'attribut `hidden`. Le formulaire restait visible même quand `addChapterForm.hidden = true` était positionné par `renderWordSelection`.
+
+- `style.css` — modifié : ajout de `[hidden] { display: none !important; }` en règle globale (ligne 27), garantissant que l'attribut `hidden` est toujours respecté quelle que soit la règle `display` définie par les classes CSS auteur
+

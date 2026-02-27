@@ -36,12 +36,26 @@ def init_db() -> None:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS chapters (
                 id               INTEGER PRIMARY KEY AUTOINCREMENT,
-                book_id          INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+                user_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 title            TEXT    NOT NULL,
-                content          TEXT    NOT NULL,
-                word_count       INTEGER NOT NULL DEFAULT 0,
-                words_to_extract INTEGER NOT NULL DEFAULT 5,
+                chapter_number   INTEGER NOT NULL,
+                text             TEXT    NOT NULL,
+                target_language  TEXT    NOT NULL,
+                level            TEXT    NOT NULL,
+                translation_mode TEXT    NOT NULL,
                 created_at       TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS words (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                chapter_id INTEGER NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+                user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                word       TEXT    NOT NULL,
+                base_form  TEXT    NOT NULL,
+                output     TEXT    NOT NULL,
+                status     TEXT    NOT NULL DEFAULT 'to_learn',
+                created_at TEXT    NOT NULL DEFAULT (datetime('now'))
             )
         """)
     conn.close()

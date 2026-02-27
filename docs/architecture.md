@@ -24,8 +24,13 @@ chapter-prep-sans-ai/
 ├── dashboard.css       → Styles dashboard (navbar, cards, modale)
 ├── dashboard.js        → Logique dashboard (auth guard, CRUD livres)
 │
+├── book.html           → Page d'un livre (liste des chapitres)
+├── book.css            → Styles page livre (chapter-card, word-stats, slider)
+├── book.js             → Logique page livre (loadBook, loadChapters, CRUD chapitres)
+│
 ├── docs/
-│   └── architecture.md → Ce fichier
+│   ├── architecture.md → Ce fichier
+│   └── historique.md   → Journal de toutes les modifications
 │
 └── backend/
     ├── main.py             → Point d'entrée FastAPI, CORS, inclusion des routers
@@ -36,15 +41,18 @@ chapter-prep-sans-ai/
     │
     ├── routes/
     │   ├── auth.py         → POST /auth/register, POST /auth/login
-    │   └── books.py        → GET /books, POST /books
+    │   ├── books.py        → GET /books, GET /books/{id}, POST /books, DELETE /books/{id}
+    │   └── chapters.py     → GET|POST /books/{id}/chapters, DELETE /books/{id}/chapters/{ch_id}
     │
     ├── services/
-    │   ├── auth_service.py → Hash, vérif mot de passe, JWT, register/login
-    │   └── book_service.py → Logique métier livres
+    │   ├── auth_service.py     → Hash, vérif mot de passe, JWT, register/login
+    │   ├── book_service.py     → Logique métier livres
+    │   └── chapter_service.py  → Logique métier chapitres (word_count, recommandation)
     │
     ├── repositories/
-    │   ├── user_repository.py  → SQL utilisateurs (get, create)
-    │   └── book_repository.py  → SQL livres (get, create)
+    │   ├── user_repository.py    → SQL utilisateurs (get, create)
+    │   ├── book_repository.py    → SQL livres (get, create, delete)
+    │   └── chapter_repository.py → SQL chapitres (get, create, delete)
     │
     ├── .env                → Secrets locaux (jamais commité)
     ├── .env.example        → Template sans valeurs sensibles
@@ -95,6 +103,26 @@ books
   author      TEXT
   language    TEXT     NOT NULL DEFAULT 'fr'
   created_at  TEXT     NOT NULL DEFAULT datetime('now')
+
+chapters
+  id               INTEGER  PK AUTOINCREMENT
+  user_id          INTEGER  NOT NULL REFERENCES users(id) ON DELETE CASCADE
+  title            TEXT     NOT NULL   -- titre du livre (dénormalisé, pas de FK)
+  chapter_number   INTEGER  NOT NULL
+  text             TEXT     NOT NULL
+  target_language  TEXT     NOT NULL
+  level            TEXT     NOT NULL   -- A1 à C2
+  translation_mode TEXT     NOT NULL   -- 'translation' | 'definition'
+  words_to_extract INTEGER  NOT NULL DEFAULT 5
+  created_at       TEXT     NOT NULL DEFAULT datetime('now')
+
+words
+  id          INTEGER  PK AUTOINCREMENT
+  chapter_id  INTEGER  NOT NULL REFERENCES chapters(id) ON DELETE CASCADE
+  word        TEXT     NOT NULL   -- forme dans le texte
+  base_form   TEXT     NOT NULL   -- forme de base / lemme
+  output      TEXT     NOT NULL   -- traduction ou définition
+  created_at  TEXT     NOT NULL DEFAULT datetime('now')
 ```
 
 ### Contraintes clés
@@ -129,8 +157,20 @@ index.html
                           ▼
                      app.html (dashboard)
                        │
-                       ├── GET /books  → liste des livres de l'user
-                       └── POST /books → créer un livre
+                       ├── GET /books         → liste des livres de l'user
+                       ├── POST /books        → créer un livre
+                       ├── DELETE /books/{id} → supprimer un livre
+                       │
+                       └── book.html (chapitres d'un livre)
+                             │
+                             ├── GET /books/{id}          → métadonnées du livre
+                             ├── GET /chapters            → tous les chapitres user
+                             │                              (filtré par titre côté client)
+                             ├── POST /chapters           → crée le chapitre + appelle
+                             │                              Gemini → retourne { chapter, words }
+                             ├── DELETE /chapters/{id}    → supprimer un chapitre
+                             ├── POST /chapters/{id}/words → confirmer la sélection de mots
+                             └── GET  /chapters/{id}/words → lire les mots stockés
 ```
 
 ---
@@ -158,6 +198,7 @@ index.html
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Durée de vie du token | `60` |
 | `DATABASE_URL` | Chemin vers la base SQLite | `./chapterprep.db` |
 | `APP_ENV` | Environnement (`production` déclenche des guards) | _(vide)_ |
+| `GEMINI_API_KEY` | Clé API Google Gemini (extraction vocabulaire) | _(obligatoire)_ |
 
 ---
 
