@@ -28,6 +28,10 @@ chapter-prep-sans-ai/
 ├── book.css            → Styles page livre (chapter-card, word-stats, slider)
 ├── book.js             → Logique page livre (loadBook, loadChapters, CRUD chapitres)
 │
+├── read.html           → Page de lecture d'un chapitre (texte + traductions)
+├── read.css            → Styles page lecture (panels, word highlighting, translation)
+├── read.js             → Logique page lecture (tokenization, translations, vocab management, TSV export)
+│
 ├── docs/
 │   ├── architecture.md → Ce fichier
 │   └── historique.md   → Journal de toutes les modifications
@@ -42,17 +46,28 @@ chapter-prep-sans-ai/
     ├── routes/
     │   ├── auth.py         → POST /auth/register, POST /auth/login
     │   ├── books.py        → GET /books, GET /books/{id}, POST /books, DELETE /books/{id}
-    │   └── chapters.py     → GET|POST /books/{id}/chapters, DELETE /books/{id}/chapters/{ch_id}
+    │   ├── chapters.py     → GET /books/{book_id}/chapters,
+    │   │                     GET /books/{book_id}/chapters/{chapter_id},
+    │   │                     POST /books/{book_id}/chapters,
+    │   │                     DELETE /books/{book_id}/chapters/{chapter_id},
+    │   │                     POST /books/{book_id}/chapters/{chapter_id}/words,
+    │   │                     GET /books/{book_id}/chapters/{chapter_id}/words,
+    │   │                     POST /books/{book_id}/chapters/{chapter_id}/words/single
+    │   └── translate.py    → POST /translate
     │
     ├── services/
-    │   ├── auth_service.py     → Hash, vérif mot de passe, JWT, register/login
-    │   ├── book_service.py     → Logique métier livres
-    │   └── chapter_service.py  → Logique métier chapitres (word_count, recommandation)
+    │   ├── auth_service.py        → Hash, vérif mot de passe, JWT, register/login
+    │   ├── book_service.py        → Logique métier livres
+    │   ├── chapter_service.py     → Logique métier chapitres (word_count, recommandation)
+    │   ├── vocabulary_service.py  → Extraction vocabulaire via Gemini API
+    │   ├── translation_service.py → Traduction à la volée via RapidAPI Deep Translate
+    │   └── word_service.py        → Logique métier mots (ajout, récupération, gestion)
     │
     ├── repositories/
     │   ├── user_repository.py    → SQL utilisateurs (get, create)
     │   ├── book_repository.py    → SQL livres (get, create, delete)
-    │   └── chapter_repository.py → SQL chapitres (get, create, delete)
+    │   ├── chapter_repository.py → SQL chapitres (get, create, delete)
+    │   └── word_repository.py    → SQL mots (create, get_by_chapter, get_all)
     │
     ├── .env                → Secrets locaux (jamais commité)
     ├── .env.example        → Template sans valeurs sensibles
@@ -107,21 +122,21 @@ books
 chapters
   id               INTEGER  PK AUTOINCREMENT
   user_id          INTEGER  NOT NULL REFERENCES users(id) ON DELETE CASCADE
-  title            TEXT     NOT NULL   -- titre du livre (dénormalisé, pas de FK)
+  book_id          INTEGER  NOT NULL REFERENCES books(id) ON DELETE CASCADE
   chapter_number   INTEGER  NOT NULL
   text             TEXT     NOT NULL
-  target_language  TEXT     NOT NULL
   level            TEXT     NOT NULL   -- A1 à C2
   translation_mode TEXT     NOT NULL   -- 'translation' | 'definition'
-  words_to_extract INTEGER  NOT NULL DEFAULT 5
   created_at       TEXT     NOT NULL DEFAULT datetime('now')
 
 words
   id          INTEGER  PK AUTOINCREMENT
   chapter_id  INTEGER  NOT NULL REFERENCES chapters(id) ON DELETE CASCADE
+  user_id     INTEGER  NOT NULL REFERENCES users(id) ON DELETE CASCADE
   word        TEXT     NOT NULL   -- forme dans le texte
   base_form   TEXT     NOT NULL   -- forme de base / lemme
   output      TEXT     NOT NULL   -- traduction ou définition
+  status      TEXT     NOT NULL DEFAULT 'to_learn'  -- 'to_learn' | 'known'
   created_at  TEXT     NOT NULL DEFAULT datetime('now')
 ```
 
@@ -164,13 +179,19 @@ index.html
                        └── book.html (chapitres d'un livre)
                              │
                              ├── GET /books/{id}          → métadonnées du livre
-                             ├── GET /chapters            → tous les chapitres user
-                             │                              (filtré par titre côté client)
-                             ├── POST /chapters           → crée le chapitre + appelle
-                             │                              Gemini → retourne { chapter, words }
-                             ├── DELETE /chapters/{id}    → supprimer un chapitre
-                             ├── POST /chapters/{id}/words → confirmer la sélection de mots
-                             └── GET  /chapters/{id}/words → lire les mots stockés
+                             ├── GET /books/{book_id}/chapters → chapitres du livre (filtrés par book_id + user_id)
+                             ├── GET /books/{book_id}/chapters/{chapter_id} → détail d'un chapitre
+                             ├── POST /books/{book_id}/chapters → crée le chapitre + appelle
+                             │                                    Gemini → retourne { chapter, words }
+                             ├── DELETE /books/{book_id}/chapters/{chapter_id} → supprimer un chapitre
+                             ├── POST /books/{book_id}/chapters/{chapter_id}/words → confirmer la sélection de mots
+                             │
+                             └── read.html (lecture d'un chapitre)
+                                   │
+                                   ├── GET  /books/{book_id}/chapters/{chapter_id} → texte + métadonnées chapitre
+                                   ├── GET  /books/{book_id}/chapters/{chapter_id}/words → mots stockés du chapitre
+                                   ├── POST /books/{book_id}/chapters/{chapter_id}/words/single → ajouter un mot depuis la lecture
+                                   └── POST /translate → traduction à la volée (sans stockage DB)
 ```
 
 ---
@@ -199,6 +220,7 @@ index.html
 | `DATABASE_URL` | Chemin vers la base SQLite | `./chapterprep.db` |
 | `APP_ENV` | Environnement (`production` déclenche des guards) | _(vide)_ |
 | `GEMINI_API_KEY` | Clé API Google Gemini (extraction vocabulaire) | _(obligatoire)_ |
+| `RAPIDAPI_KEY` | Clé API RapidAPI (traduction à la volée) | _(obligatoire)_ |
 
 ---
 

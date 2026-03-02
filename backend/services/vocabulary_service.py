@@ -66,8 +66,6 @@ def extract_vocabulary(
             detail="L'API Gemini n'a pas répondu dans les délais.",
         )
     except httpx.ConnectError:
-        print("STATUS GEMINI:", response.status_code)
-        print("BODY GEMINI:", response.text[:500])  
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Impossible de joindre l'API Gemini.",

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChapterPrep — Lecture</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="dashboard.css" />
+    <link rel="stylesheet" href="book.css" />
+    <link rel="stylesheet" href="read.css" />
+  </head>
+  <body class="dashboard-body">
+    <header class="navbar">
+      <div class="navbar__left">
+        <a href="book.html" class="navbar__back" id="back-link" aria-label="Retour au livre">&#8592;</a>
+        <span class="navbar__brand">ChapterPrep</span>
+      </div>
+      <div class="navbar__user">
+        <span class="navbar__username" id="nav-username"></span>
+        <button class="btn btn--outline" id="logout-btn">Déconnexion</button>
+      </div>
+    </header>
+
+    <main class="read-layout">
+      <section class="read-main">
+        <div class="read-main__header">
+          <p class="read-main__label">Lecture</p>
+          <h1 class="read-main__title" id="chapter-title">Chapitre</h1>
+          <p class="read-main__meta" id="chapter-meta"></p>
+        </div>
+
+        <p class="form__error" id="read-error" aria-live="polite"></p>
+        <article id="chapter-text" class="chapter-text"></article>
+      </section>
+
+      <aside class="read-panel">
+        <div class="panel-card panel-translation" id="panel-translation">
+          <p class="translation-placeholder">Clique sur un mot pour obtenir sa traduction.</p>
+        </div>
+
+        <div class="panel-card panel-vocab">
+          <h3>Mes mots</h3>
+          <ul id="vocab-list" class="vocab-list"></ul>
+          <p class="form__error" id="vocab-error" aria-live="polite"></p>
+          <button class="btn btn--outline" id="export-btn">Exporter</button>
+        </div>
+      </aside>
+    </main>
+
+    <script src="read.js"></script>
+  </body>
+</html>

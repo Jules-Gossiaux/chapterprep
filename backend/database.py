@@ -37,10 +37,9 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS chapters (
                 id               INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                title            TEXT    NOT NULL,
+                book_id          INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
                 chapter_number   INTEGER NOT NULL,
                 text             TEXT    NOT NULL,
-                target_language  TEXT    NOT NULL,
                 level            TEXT    NOT NULL,
                 translation_mode TEXT    NOT NULL,
                 created_at       TEXT    NOT NULL DEFAULT (datetime('now'))

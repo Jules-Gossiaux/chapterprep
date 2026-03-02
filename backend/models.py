@@ -23,8 +23,6 @@ class RegisterRequest(BaseModel):
     @classmethod
     def email_valid(cls, v: str) -> str:
         v = v.strip().lower()
-        if not v:
-            raise ValueError("L'adresse email est obligatoire.")
         return v
 
     @field_validator("password")
@@ -96,15 +94,13 @@ _ALLOWED_TRANSLATION_MODES = {"translation", "definition"}
 
 
 class ChapterCreateRequest(BaseModel):
-    title:            str           # titre du livre
     chapter_number:   int           # numéro du chapitre
     text:             str           # texte collé
-    target_language:  str           # ex: "anglais"
     words_to_extract: int           # nombre de mots que Gemini doit extraire (1–50)
     level:            str           # A1 à C2
     translation_mode: str           # "translation" ou "definition"
 
-    @field_validator("title", "text", "target_language")
+    @field_validator("text")
     @classmethod
     def not_empty(cls, v: str) -> str:
         v = v.strip()
@@ -144,9 +140,9 @@ class ChapterCreateRequest(BaseModel):
 class ChapterResponse(BaseModel):
     id:               int
     user_id:          int
-    title:            str
+    book_id:          int
     chapter_number:   int
-    target_language:  str
+    text:             str
     level:            str
     translation_mode: str
     created_at:       str
@@ -162,7 +158,7 @@ class WordItem(BaseModel):
 
 
 class ExtractionResponse(BaseModel):
-    """Réponse du endpoint POST /chapters : chapitre créé + mots suggérés."""
+    """Réponse du endpoint POST /books/{book_id}/chapters : chapitre créé + mots suggérés."""
     chapter: ChapterResponse
     words:   list[WordItem]
 
@@ -188,3 +184,39 @@ class WordResponse(BaseModel):
     output:     str
     status:     str
     created_at: str
+
+
+# ── Traduction à la volée ─────────────────────────────────────
+
+class TranslateRequest(BaseModel):
+    chapter_id: int
+    word:       str
+
+    @field_validator("word")
+    @classmethod
+    def word_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Le mot ne peut pas être vide.")
+        return v
+
+
+class TranslateResponse(BaseModel):
+    word:        str
+    translation: str
+
+
+# ── Ajout d'un mot unique ─────────────────────────────────────
+
+class SingleWordAddRequest(BaseModel):
+    word:      str
+    base_form: str
+    output:    str
+
+    @field_validator("word", "base_form", "output")
+    @classmethod
+    def fields_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Ce champ ne peut pas être vide.")
+        return v

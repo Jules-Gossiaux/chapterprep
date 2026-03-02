@@ -110,6 +110,7 @@
 .chapter-card__body {
   flex: 1;
   min-width: 0;
+  cursor: pointer;
 }
 
 .chapter-card__title {
