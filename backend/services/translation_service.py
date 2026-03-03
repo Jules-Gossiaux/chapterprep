@@ -35,7 +35,10 @@ async def translate_word(chapter_id: int, user_id: int, word: str) -> str:
                 timeout=10.0,
             )
             res.raise_for_status()
-            return res.json()["data"]["translations"]["translatedText"]
+            print(res.json())
+            print(type(res.json()))
+            # return l'élément 0 car la route n'attend pas une liste mais un élément
+            return res.json()["data"]["translations"]["translatedText"][0]
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
