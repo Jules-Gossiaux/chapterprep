@@ -64,15 +64,44 @@ async function authFetch(url, options = {}) {
 }
 
 function renderText(text, knownWords) {
-  const knownSet = new Set(knownWords.map((w) => String(w.word).toLowerCase()));
-  const tokens = text.split(/(\s+|[.,!?;:'"()—\-])/);
+  // Sépare mots composés (avec espace) et mots simples
+  const multiWords = knownWords.filter((w) => w.word.includes(" "));
+  const singleWords = new Set(
+    knownWords.filter((w) => !w.word.includes(" ")).map((w) => w.word.toLowerCase())
+  );
 
-  return tokens.map((token) => {
+  // Remplace les mots composés par des placeholders, du plus long au plus court
+  // pour éviter que "lay aside" soit écrasé avant "lay aside the book"
+  let processed = text;
+  const placeholders = [];
+  multiWords
+    .sort((a, b) => b.word.length - a.word.length)
+    .forEach((w, i) => {
+      const placeholder = `%%MULTI${i}%%`;
+      const regex = new RegExp(w.word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+      const span = `<span class="word word--known" data-word="${escapeHtml(w.word)}">${escapeHtml(w.word)}</span>`;
+      if (regex.test(processed)) {
+        processed = processed.replace(regex, placeholder);
+        placeholders.push({ placeholder, span });
+      }
+    });
+
+  // Traite les mots simples token par token
+  const tokens = processed.split(/(\s+|[.,!?;:'"()—\-])/);
+  let html = tokens.map((token) => {
     if (!token.trim() || /^[.,!?;:'"()—\-]+$/.test(token)) return token;
-    const isKnown = knownSet.has(token.toLowerCase());
+    if (token.startsWith("%%MULTI")) return token;
+    const isKnown = singleWords.has(token.toLowerCase());
     const safeToken = escapeHtml(token);
     return `<span class="word${isKnown ? " word--known" : ""}" data-word="${safeToken}">${safeToken}</span>`;
   }).join("");
+
+  // Réinjecte les spans des mots composés (replaceAll pour couvrir les doublons)
+  for (const { placeholder, span } of placeholders) {
+    html = html.replaceAll(placeholder, span);
+  }
+
+  return html;
 }
 
 function renderVocabList(words) {
@@ -89,12 +118,43 @@ function renderVocabList(words) {
   words.forEach((word) => {
     const li = document.createElement("li");
     li.className = "vocab-item";
+    li.dataset.id = word.id;
     li.innerHTML = `
       <span class="vocab-item__word">${escapeHtml(word.word)}</span>
+      <span class="vocab-item__arrow">→</span>
       <span class="vocab-item__output">${escapeHtml(word.output)}</span>
+      <button class="vocab-item__delete" aria-label="Supprimer ce mot" title="Supprimer">🗑</button>
     `;
+    li.querySelector(".vocab-item__delete").addEventListener("click", () =>
+      deleteWord(word.id, li)
+    );
     vocabListEl.appendChild(li);
   });
+}
+
+async function deleteWord(wordId, cardEl) {
+  try {
+    const response = await authFetch(
+      `${API_URL}/books/${bookId}/chapters/${chapterId}/words/${wordId}`,
+      { method: "DELETE" }
+    );
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      vocabErrorEl.textContent = data.detail || "Impossible de supprimer ce mot.";
+      return;
+    }
+
+    vocabWords = vocabWords.filter((w) => w.id !== wordId);
+    cardEl.remove();
+    if (vocabWords.length === 0) {
+      renderVocabList([]);
+    }
+  } catch (err) {
+    if (err.message !== "Unauthorized") {
+      vocabErrorEl.textContent = "Impossible de contacter le serveur.";
+    }
+  }
 }
 
 function markWordAsKnown(word) {
