@@ -5,7 +5,7 @@ Toutes les routes sont protégées par le token JWT (Depends(get_current_user)).
 from fastapi import APIRouter, Depends
 
 from dependencies import get_current_user
-from models import BookCreate, BookResponse, TokenData
+from models import BatchImportRequest, BookCreate, BookResponse, TokenData
 from services import book_service
 
 router = APIRouter(prefix="/books", tags=["Books"])
@@ -33,6 +33,15 @@ def add_book(
 ):
     """Crée un nouveau livre pour l'utilisateur connecté."""
     return book_service.create_book(user_id=current_user.user_id, data=body)
+
+
+@router.post("/batch-import", response_model=BookResponse, status_code=201)
+def batch_import_book(
+    body: BatchImportRequest,
+    current_user: TokenData = Depends(get_current_user),
+):
+    """Importe un livre avec tous ses chapitres pré-découpés."""
+    return book_service.import_book_with_chapters(user_id=current_user.user_id, data=body)
 
 
 @router.delete("/{book_id}", status_code=204)

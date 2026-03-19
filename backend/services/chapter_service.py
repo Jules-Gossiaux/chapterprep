@@ -55,3 +55,11 @@ def delete_chapter(chapter_id: int, book_id: int, user_id: int) -> None:
     if not row or row["user_id"] != user_id or row["book_id"] != book_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé.")
     chapter_repository.delete_chapter(chapter_id)
+
+
+def mark_chapter_done(chapter_id: int, book_id: int, user_id: int) -> None:
+    """Passe le statut du chapitre à 'done' après vérification d'ownership."""
+    row = chapter_repository.get_chapter_by_id(chapter_id)
+    if not row or row["user_id"] != user_id or row["book_id"] != book_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé.")
+    chapter_repository.update_chapter_status(chapter_id, "done")

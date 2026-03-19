@@ -1,12 +1,13 @@
 """
 Routes vocabulaire :
-    GET  /books/{book_id}/chapters                          → liste les chapitres d'un livre
-    POST /books/{book_id}/chapters                          → soumet un chapitre, appelle Gemini
-    GET  /books/{book_id}/chapters/{chapter_id}             → récupère un chapitre
-    DELETE /books/{book_id}/chapters/{chapter_id}           → supprime un chapitre
-    POST /books/{book_id}/chapters/{chapter_id}/words       → confirme la sélection
-    GET  /books/{book_id}/chapters/{chapter_id}/words       → récupère les mots
-    POST /books/{book_id}/chapters/{chapter_id}/words/single → ajoute un mot unique
+    GET    /books/{book_id}/chapters                                  → liste les chapitres d'un livre
+    POST   /books/{book_id}/chapters                                  → soumet un chapitre, appelle Gemini
+    GET    /books/{book_id}/chapters/{chapter_id}                     → récupère un chapitre
+    DELETE /books/{book_id}/chapters/{chapter_id}                     → supprime un chapitre
+    POST   /books/{book_id}/chapters/{chapter_id}/words               → confirme la sélection
+    GET    /books/{book_id}/chapters/{chapter_id}/words               → récupère les mots
+    POST   /books/{book_id}/chapters/{chapter_id}/words/single        → ajoute un mot unique
+    DELETE /books/{book_id}/chapters/{chapter_id}/words/{word_id}     → supprime un mot
 """
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -104,11 +105,13 @@ def confirm_words(
     """
     chapter_service.get_chapter(chapter_id=chapter_id, book_id=book_id, user_id=current_user.user_id)
 
-    return word_service.confirm_words(
+    result = word_service.confirm_words(
         chapter_id=chapter_id,
         user_id=current_user.user_id,
         words=[w.model_dump() for w in body.words],
     )
+    chapter_service.mark_chapter_done(chapter_id=chapter_id, book_id=book_id, user_id=current_user.user_id)
+    return result
 
 
 @router.get("/{chapter_id}/words", response_model=list[WordResponse])
@@ -141,3 +144,15 @@ def add_single_word(
         user_id=current_user.user_id,
         word_data=body.model_dump(),
     )
+
+
+@router.delete("/{chapter_id}/words/{word_id}", status_code=204)
+def delete_word(
+    book_id: int,
+    chapter_id: int,
+    word_id: int,
+    current_user: TokenData = Depends(get_current_user),
+):
+    """Supprime un mot de la liste du chapitre (vérifie l'ownership du chapitre)."""
+    chapter_service.get_chapter(chapter_id=chapter_id, book_id=book_id, user_id=current_user.user_id)
+    word_service.delete_word(word_id=word_id, user_id=current_user.user_id)

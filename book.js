@@ -144,7 +144,7 @@ function updateWordStats() {
 
   // Met à jour le slider sur la valeur recommandée seulement si l'user n'a pas encore bougé
   if (!wordsSlider.dataset.touched) {
-    wordsSlider.value          = rec;
+    wordsSlider.value       = rec;
     extractCurrent.textContent = rec;
   }
 }
@@ -153,20 +153,6 @@ wordsSlider.addEventListener("input", () => {
   wordsSlider.dataset.touched    = "1";
   extractCurrent.textContent     = wordsSlider.value;
 });
-
-// ─────────────────────────────────────────────
-//  Nettoyage du chapitre non confirmé
-// ─────────────────────────────────────────────
-async function cancelPendingChapter() {
-  if (pendingChapterId !== null) {
-    const id     = pendingChapterId;
-    pendingChapterId = null;
-    pendingWords     = [];
-    try {
-      await authFetch(`${API_URL}/books/${bookId}/chapters/${id}`, { method: "DELETE" });
-    } catch { /* ignore */ }
-  }
-}
 
 // ─────────────────────────────────────────────
 //  Modale
@@ -180,17 +166,27 @@ function openModal() {
   addChapterForm.hidden       = false;
   wordSelectionView.hidden    = true;
   modalTitleEl.textContent    = "Nouveau chapitre";
-  modalOverlay.hidden         = false;
+  modalOverlay.hidden = false;
   chapterNumberInput.focus();
 }
 
-function closeModal() {
-  // Ferme immédiatement — nettoyage en arrière-plan intentionnel (pas de await)
+async function closeModal() {
+  // Ferme immédiatement la modale
   modalOverlay.hidden      = true;
+  // Remet en état initial pour la prochaine ouverture
   addChapterForm.hidden    = false;
   wordSelectionView.hidden = true;
   modalTitleEl.textContent = "Nouveau chapitre";
-  cancelPendingChapter();
+
+  // Nettoyage asynchrone : supprime le chapitre créé mais non confirmé
+  if (pendingChapterId !== null) {
+    const id     = pendingChapterId;
+    pendingChapterId = null;
+    pendingWords     = [];
+    try {
+      await authFetch(`${API_URL}/books/${bookId}/chapters/${id}`, { method: "DELETE" });
+    } catch { /* ignore */ }
+  }
 }
 
 addChapterBtn.addEventListener("click", openModal);
@@ -205,7 +201,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modalOv
 // ─────────────────────────────────────────────
 function renderChapter(chapter, index) {
   const li = document.createElement("li");
-  li.className  = "chapter-card";
+  li.className = "chapter-card";
   li.dataset.id = chapter.id;
 
   const modeLabel = chapter.translation_mode === "definition" ? "Définition" : "Traduction";
@@ -236,8 +232,8 @@ function renderChapter(chapter, index) {
 function renderChapterList(chapters) {
   chapterList.innerHTML = "";
   if (chapters.length === 0) {
-    emptyState.hidden  = false;
-    chapterList.hidden = true;
+    emptyState.hidden   = false;
+    chapterList.hidden  = true;
     return;
   }
   emptyState.hidden  = true;
@@ -253,9 +249,9 @@ async function loadBook() {
     const res = await authFetch(`${API_URL}/books/${bookId}`);
     if (!res.ok) { window.location.href = "app.html"; return; }
     const book = await res.json();
-    bookTitleEl.textContent  = book.title;
-    bookAuthorEl.textContent = book.author || "";
-    document.title           = `ChapterPrep — ${book.title}`;
+    bookTitleEl.textContent   = book.title;
+    bookAuthorEl.textContent  = book.author || "";
+    document.title            = `ChapterPrep — ${book.title}`;
   } catch {
     window.location.href = "app.html";
   }
@@ -279,14 +275,14 @@ addChapterForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   addChapterError.textContent = "";
 
-  const chapterNumber   = parseInt(chapterNumberInput.value, 10);
-  const level           = levelSelect.value;
+  const chapterNumber  = parseInt(chapterNumberInput.value, 10);
+  const level          = levelSelect.value;
   const translationMode = translationSelect.value;
-  const text            = contentTextarea.value.trim();
-  const wordsToExtract  = parseInt(wordsSlider.value, 10);
+  const text           = contentTextarea.value.trim();
+  const wordsToExtract = parseInt(wordsSlider.value, 10);
 
   if (!chapterNumber || isNaN(chapterNumber) || chapterNumber < 1) { addChapterError.textContent = "Le numéro de chapitre est obligatoire."; return; }
-  if (!text) { addChapterError.textContent = "Le contenu est obligatoire."; return; }
+  if (!text)            { addChapterError.textContent = "Le contenu est obligatoire."; return; }
 
   setLoading(addChapterSubmit, "Extraction en cours…");
 
@@ -336,10 +332,10 @@ function renderWordSelection(chapterId, words) {
     wordSelectionHint.textContent =
       `${n} mot${n > 1 ? "s" : ""} suggéré${n > 1 ? "s" : ""} — décochez ceux que vous ne souhaitez pas retenir.`;
     pendingWords.forEach((w, i) => {
-      const li         = document.createElement("li");
+      const li   = document.createElement("li");
       li.className     = "word-item";
       li.dataset.index = i;
-      const cbId       = `word-cb-${i}`;
+      const cbId = `word-cb-${i}`;
       li.innerHTML = `
         <label class="word-item__label" for="${cbId}">
           <input type="checkbox" id="${cbId}" class="word-item__checkbox" checked />
@@ -356,13 +352,23 @@ function renderWordSelection(chapterId, words) {
   addChapterForm.hidden    = true;
   wordSelectionView.hidden = false;
   modalTitleEl.textContent = "Mots extraits";
+
 }
 
 backToFormBtn.addEventListener("click", async () => {
-  await cancelPendingChapter(); // await ici — l'user reste dans la modale
+  // Supprime silencieusement le chapitre non confirmé
+  if (pendingChapterId !== null) {
+    const id     = pendingChapterId;
+    pendingChapterId = null;
+    pendingWords     = [];
+    try {
+      await authFetch(`${API_URL}/books/${bookId}/chapters/${id}`, { method: "DELETE" });
+    } catch { /* ignore */ }
+  }
   wordSelectionView.hidden = true;
   addChapterForm.hidden    = false;
   modalTitleEl.textContent = "Nouveau chapitre";
+
 });
 
 confirmSelectionBtn.addEventListener("click", async () => {
@@ -410,7 +416,7 @@ confirmSelectionBtn.addEventListener("click", async () => {
 //  Suppression d'un chapitre
 // ─────────────────────────────────────────────
 async function deleteChapter(chapterId, chapterNumber, cardEl) {
-  if (!confirm(`Supprimer le chapitre ${chapterNumber} ? Cette action est irréversible.`)) return;
+  if (!confirm(`Supprimer le chapitre ${chapterNumber} ? Cette action est irréversible.`)) return;
 
   cardEl.classList.add("chapter-card--deleting");
 
@@ -431,8 +437,8 @@ async function deleteChapter(chapterId, chapterNumber, cardEl) {
       el.textContent = i + 1;
     });
     if (chapterList.children.length === 0) {
-      chapterList.hidden = true;
-      emptyState.hidden  = false;
+      chapterList.hidden  = true;
+      emptyState.hidden   = false;
     }
   } catch (err) {
     if (err.message !== "Unauthorized") {
@@ -445,6 +451,7 @@ async function deleteChapter(chapterId, chapterNumber, cardEl) {
 // ─────────────────────────────────────────────
 //  Initialisation
 // ─────────────────────────────────────────────
+// loadBook() puis loadChapters() en séquence
 async function init() {
   await loadBook();
   await loadChapters();

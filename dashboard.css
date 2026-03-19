@@ -321,3 +321,11 @@ select.form__input {
     padding: 1.5rem 1rem 3rem;
   }
 }
+
+/* Dropzone (Import PDF) */
+.dropzone { border: 2px dashed var(--color-border); border-radius: var(--radius); padding: 2rem 1rem; text-align: center; transition: all var(--transition); cursor: pointer; background: var(--color-bg); display: flex; flex-direction: column; align-items: center; gap: 0.8rem; }
+.dropzone:hover, .dropzone.dragover { border-color: var(--color-primary); background: rgba(59, 94, 74, 0.05); }
+.dropzone--disabled { opacity: 0.5; pointer-events: none; }
+.dropzone__icon { font-size: 2.2rem; line-height: 1; }
+.dropzone__text { font-size: 0.95rem; color: var(--color-muted); }
+.import-preview { margin-top: 1rem; padding: 1rem; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: var(--radius); color: #2e7d32; font-size: 0.95rem; text-align: center; margin-bottom: 1rem; }

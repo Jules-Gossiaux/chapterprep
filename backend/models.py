@@ -78,6 +78,35 @@ class BookCreate(BaseModel):
         return v
 
 
+class BatchImportRequest(BaseModel):
+    title:    str
+    author:   Optional[str] = None
+    language: str = "fr"
+    chapters: list[str]
+
+    @field_validator("title")
+    @classmethod
+    def title_valid(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Le titre ne peut pas être vide.")
+        return v
+
+    @field_validator("language")
+    @classmethod
+    def language_valid(cls, v: str) -> str:
+        if v not in _ALLOWED_LANGUAGES:
+            raise ValueError(f"Langue non supportée. Valeurs acceptées : {sorted(_ALLOWED_LANGUAGES)}")
+        return v
+
+    @field_validator("chapters")
+    @classmethod
+    def chapters_valid(cls, v: list[str]) -> list[str]:
+        if not v:
+            raise ValueError("La liste des chapitres ne peut pas être vide.")
+        return v
+
+
 class BookResponse(BaseModel):
     id:         int
     user_id:    int
@@ -145,6 +174,7 @@ class ChapterResponse(BaseModel):
     text:             str
     level:            str
     translation_mode: str
+    status:           str
     created_at:       str
 
 

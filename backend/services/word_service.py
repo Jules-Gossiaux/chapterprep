@@ -54,3 +54,16 @@ def add_single_word(
     )
     row = word_repository.get_word_by_id(word_id)
     return WordResponse(**dict(row))
+
+
+def delete_word(word_id: int, user_id: int) -> None:
+    """
+    Supprime un mot si l'utilisateur en est propriétaire.
+    Lève 404 si le mot n'existe pas ou n'appartient pas à l'utilisateur.
+    """
+    deleted = word_repository.delete_word_by_id(word_id=word_id, user_id=user_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Mot introuvable.",
+        )

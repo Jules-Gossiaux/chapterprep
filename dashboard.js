@@ -1,4 +1,4 @@
-// ─────────────────────────────────────────────
+﻿// ─────────────────────────────────────────────
 //  Configuration
 // ─────────────────────────────────────────────
 const API_URL = "http://localhost:8000";
@@ -261,3 +261,125 @@ addBookForm.addEventListener("submit", async (e) => {
 //  Initialisation
 // ─────────────────────────────────────────────
 loadBooks();
+
+// ─────────────────────────────────────────────
+//  Import PDF
+// ─────────────────────────────────────────────
+const importBtn = document.getElementById('import-book-btn');
+const modalImport = document.getElementById('modal-import-overlay');
+const btnCloseImport = document.getElementById('modal-import-close');
+const btnCancelImport = document.getElementById('modal-import-cancel-btn');
+const formImport = document.getElementById('import-book-form');
+const submitImportBtn = document.getElementById('import-submit-btn');
+const errorImport = document.getElementById('import-error');
+const dropzone = document.getElementById('pdf-dropzone');
+const pdfInput = document.getElementById('pdf-file-input');
+const wordsSlider = document.getElementById('import-words-slider');
+const wordsVal = document.getElementById('import-words-val');
+const previewBox = document.getElementById('import-preview-box');
+const previewCount = document.getElementById('import-chapter-count');
+const dropzoneBtn = document.getElementById('dropzone-btn');
+
+let extractedChapters = [];
+
+importBtn.addEventListener('click', () => { 
+  formImport.reset(); 
+  errorImport.textContent = ''; 
+  previewBox.hidden = true; 
+  submitImportBtn.hidden = true; 
+  dropzone.classList.remove('dropzone--disabled'); 
+  dropzone.querySelector('.dropzone__text').innerHTML = 'Glissez-déposez le PDF ici<br>ou cliquez pour choisir';
+  wordsSlider.disabled = false; 
+  wordsVal.textContent = wordsSlider.value; 
+  extractedChapters = []; 
+  modalImport.hidden = false; 
+});
+
+const closeImportModal = () => { modalImport.hidden = true; };
+btnCloseImport.addEventListener('click', closeImportModal);
+btnCancelImport.addEventListener('click', closeImportModal);
+modalImport.addEventListener('click', e => { if (e.target === modalImport) closeImportModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modalImport.hidden) closeImportModal(); });
+
+wordsSlider.addEventListener('input', e => { wordsVal.textContent = e.target.value; });
+
+// Gestion Dropzone
+dropzoneBtn.addEventListener('click', () => pdfInput.click());
+dropzone.addEventListener('click', (e) => { if (e.target !== dropzoneBtn) pdfInput.click(); });
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', e => { 
+  e.preventDefault(); 
+  dropzone.classList.remove('dragover'); 
+  const file = e.dataTransfer.files[0]; 
+  if (file) handleFile(file); 
+});
+pdfInput.addEventListener('change', e => { 
+  const file = e.target.files[0]; 
+  if (file) handleFile(file); 
+});
+
+async function handleFile(file) { 
+  if (!file.name.toLowerCase().endsWith('.pdf')) { 
+    errorImport.textContent = 'Veuillez sélectionner un fichier PDF.'; 
+    return; 
+  } 
+  errorImport.textContent = ''; 
+  dropzone.classList.add('dropzone--disabled'); 
+  wordsSlider.disabled = true; 
+  dropzone.querySelector('.dropzone__text').innerHTML = '<span class="spinner"></span><br>Découpage en cours...'; 
+  
+  const formData = new FormData(); 
+  formData.append('file', file); 
+  formData.append('words_per_chapter', wordsSlider.value); 
+  
+  try { 
+    const res = await fetch(`${API_URL}/utils/pdf/preview`, { 
+      method: 'POST', 
+      headers: { Authorization: `Bearer ${token}` }, 
+      body: formData 
+    }); 
+    const data = await res.json(); 
+    if (!res.ok) throw new Error(data.detail || 'Erreur lors du découpage.'); 
+    
+    extractedChapters = data.chapters; 
+    previewCount.textContent = data.chapter_count; 
+    previewBox.hidden = false; 
+    submitImportBtn.hidden = false; 
+    dropzone.querySelector('.dropzone__text').innerHTML = 'Document prêt.'; 
+  } catch(e) { 
+    errorImport.textContent = e.message; 
+    dropzone.classList.remove('dropzone--disabled'); 
+    wordsSlider.disabled = false; 
+    dropzone.querySelector('.dropzone__text').innerHTML = 'Glissez-déposez le PDF ici<br>ou cliquez pour choisir'; 
+  } 
+}
+
+formImport.addEventListener('submit', async e => { 
+  e.preventDefault(); 
+  if(extractedChapters.length === 0) return; 
+  
+  setLoading(submitImportBtn, 'Sauvegarde...'); 
+  errorImport.textContent = ''; 
+  const title = document.getElementById('import-title').value.trim(); 
+  const author = document.getElementById('import-author').value.trim(); 
+  const language = document.getElementById('import-language').value; 
+  
+  try { 
+    const res = await fetch(`${API_URL}/books/batch-import`, { 
+      method: 'POST', 
+      headers: { 
+        'Content-Type': 'application/json', 
+        Authorization: `Bearer ${token}` 
+      }, 
+      body: JSON.stringify({ title, author, language, chapters: extractedChapters }) 
+    }); 
+    const data = await res.json(); 
+    if(!res.ok) throw new Error(data.detail || 'Erreur sauvegarde.'); 
+    
+    window.location.href = `book.html?id=${data.id}`; 
+  } catch(e) { 
+    errorImport.textContent = e.message; 
+    resetBtn(submitImportBtn, 'Sauvegarder'); 
+  } 
+});

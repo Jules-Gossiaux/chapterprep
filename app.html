@@ -27,7 +27,10 @@
           <h2 class="welcome__title">Bonjour, <span id="welcome-username"></span> 👋</h2>
           <p class="welcome__sub">Choisis un livre pour réviser son vocabulaire, ou ajoutes-en un nouveau.</p>
         </div>
-        <button class="btn btn--primary" id="add-book-btn">+ Ajouter un livre</button>
+        <div style="display: flex; gap: 1rem;">
+          <button class="btn btn--outline" id="import-book-btn">Importer un livre</button>
+          <button class="btn btn--primary" id="add-book-btn">+ Ajouter un livre</button>
+        </div>
       </section>
 
       <!-- Grille de livres -->
@@ -77,6 +80,63 @@
           <div class="modal__actions">
             <button type="button" class="btn btn--ghost" id="modal-cancel-btn">Annuler</button>
             <button type="submit" class="btn btn--primary" id="add-book-submit-btn">Créer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ── Modal : Importer un livre (PDF) ────────── -->
+    <div class="modal-overlay" id="modal-import-overlay" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-import-title">
+        <div class="modal__header">
+          <h3 class="modal__title" id="modal-import-title">Importer un livre (PDF)</h3>
+          <button class="modal__close" id="modal-import-close" aria-label="Fermer">&times;</button>
+        </div>
+        <form id="import-book-form" class="modal__form" novalidate>
+          <div class="form__group">
+            <label for="import-title" class="form__label">Titre</label>
+            <input type="text" id="import-title" class="form__input" placeholder="ex: L'Étranger" required />
+          </div>
+          <div class="form__group">
+            <label for="import-author" class="form__label">Auteur</label>
+            <input type="text" id="import-author" class="form__input" placeholder="ex: Albert Camus" />
+          </div>
+          <div class="form__group" style="display: flex; gap: 1rem;">
+            <div style="flex: 1;">
+              <label for="import-language" class="form__label">Langue du livre</label>
+              <select id="import-language" class="form__input">
+                <option value="fr">Français</option>
+                <option value="en">Anglais</option>
+                <option value="es">Espagnol</option>
+                <option value="de">Allemand</option>
+                <option value="it">Italien</option>
+              </select>
+            </div>
+            <div style="flex: 1;">
+              <label for="import-words-slider" class="form__label">Mots / chapitre : <span id="import-words-val">500</span></label>
+              <input type="range" id="import-words-slider" min="250" max="2000" step="50" value="500" class="form__input" style="padding: 0; height: auto;" />
+            </div>
+          </div>
+          
+          <div class="form__group">
+            <label class="form__label">Fichier PDF</label>
+            <div id="pdf-dropzone" class="dropzone">
+              <span class="dropzone__icon">📄</span>
+              <p class="dropzone__text">Glissez-déposez le PDF ici<br>ou cliquez pour choisir</p>
+              <button type="button" class="btn btn--outline" id="dropzone-btn">Choisir un fichier</button>
+            </div>
+            <input type="file" id="pdf-file-input" accept=".pdf" hidden />
+          </div>
+          
+          <div id="import-preview-box" class="import-preview" hidden>
+            <p>Découpage terminé ! Le livre a été divisé en <strong id="import-chapter-count">0</strong> chapitres.</p>
+          </div>
+          
+          <p class="form__error" id="import-error" aria-live="polite"></p>
+          
+          <div class="modal__actions">
+            <button type="button" class="btn btn--ghost" id="modal-import-cancel-btn">Annuler</button>
+            <button type="submit" class="btn btn--primary" id="import-submit-btn" hidden>Sauvegarder</button>
           </div>
         </form>
       </div>

@@ -6,6 +6,7 @@ from routes import auth as auth_router
 from routes import books as books_router
 from routes import chapters as chapters_router
 from routes import translate as translate_router
+from routes import utils as utils_router
 
 app = FastAPI(title="ChapterPrep API", version="0.1.0")
 
@@ -28,6 +29,7 @@ app.include_router(auth_router.router)
 app.include_router(books_router.router)
 app.include_router(chapters_router.router)
 app.include_router(translate_router.router)
+app.include_router(utils_router.router)
 
 # ─── Health check ────────────────────────────────────────────
 @app.get("/", tags=["Health"])

@@ -4,8 +4,8 @@ Orchestre les validations et délègue le SQL au repository.
 """
 from fastapi import HTTPException, status
 
-from models import BookCreate, BookResponse
-from repositories import book_repository
+from models import BatchImportRequest, BookCreate, BookResponse
+from repositories import book_repository, chapter_repository
 
 
 def delete_book(book_id: int, user_id: int) -> None:
@@ -51,4 +51,33 @@ def create_book(user_id: int, data: BookCreate) -> BookResponse:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erreur lors de la création du livre.",
         )
+    return BookResponse(**dict(row))
+
+
+def import_book_with_chapters(user_id: int, data: BatchImportRequest) -> BookResponse:
+    new_id = book_repository.create_book(
+        user_id=user_id,
+        title=data.title,
+        author=data.author,
+        language=data.language,
+    )
+
+    try:
+        for i, text in enumerate(data.chapters):
+            chapter_repository.create_chapter(
+                user_id=user_id,
+                book_id=new_id,
+                chapter_number=i + 1,
+                text=text,
+                level="B2",
+                translation_mode="translation"
+            )
+    except Exception as e:
+        book_repository.delete_book(new_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erreur lors de la création des chapitres.",
+        )
+
+    row = book_repository.get_book_by_id(new_id)
     return BookResponse(**dict(row))

@@ -103,3 +103,17 @@ def create_single_word(
             return cursor.lastrowid
     finally:
         conn.close()
+
+
+def delete_word_by_id(word_id: int, user_id: int) -> bool:
+    """Supprime un mot par son id, seulement s'il appartient à l'utilisateur. Retourne True si supprimé."""
+    conn = get_connection()
+    try:
+        with conn:
+            cursor = conn.execute(
+                "DELETE FROM words WHERE id = ? AND user_id = ?",
+                (word_id, user_id),
+            )
+            return cursor.rowcount > 0
+    finally:
+        conn.close()
