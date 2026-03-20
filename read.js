@@ -29,6 +29,9 @@ const vocabErrorEl = document.getElementById("vocab-error");
 
 let vocabWords = [];
 let currentTranslation = null;
+let suppressNextWordClick = false;
+
+const MAX_SELECTION_LENGTH = 180;
 
 navUsernameEl.textContent = username;
 backLinkEl.href = `book.html?id=${bookId}`;
@@ -43,6 +46,13 @@ function escapeHtml(str) {
   return str.replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
   );
+}
+
+function normalizeSelectedText(text) {
+  if (!text) return "";
+  const compact = text.replace(/\s+/g, " ").trim();
+  if (!compact) return "";
+  return compact.replace(/^[\s"“”'‘’.,!?;:()\-—]+|[\s"“”'‘’.,!?;:()\-—]+$/g, "").trim();
 }
 
 async function authFetch(url, options = {}) {
@@ -312,10 +322,37 @@ function exportCSV(words) {
 }
 
 chapterTextEl.addEventListener("click", async (e) => {
+  if (suppressNextWordClick) {
+    suppressNextWordClick = false;
+    return;
+  }
   if (!e.target.classList.contains("word")) return;
   const word = e.target.dataset.word;
   if (!word) return;
   await translateWord(word);
+});
+
+chapterTextEl.addEventListener("mouseup", async () => {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return;
+
+  const range = selection.getRangeAt(0);
+  if (!chapterTextEl.contains(range.commonAncestorContainer)) return;
+
+  const selectedText = normalizeSelectedText(selection.toString());
+  if (!selectedText) return;
+
+  suppressNextWordClick = true;
+
+  if (selectedText.length > MAX_SELECTION_LENGTH) {
+    currentTranslation = null;
+    renderTranslationPlaceholder("Sélection trop longue. Limite: 180 caractères.");
+    selection.removeAllRanges();
+    return;
+  }
+
+  await translateWord(selectedText);
+  selection.removeAllRanges();
 });
 
 panelTranslationEl.addEventListener("click", async (e) => {
