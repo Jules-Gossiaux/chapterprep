@@ -198,11 +198,24 @@ class ChapterResponse(BaseModel):
     user_id:          int
     book_id:          int
     chapter_number:   int
+    title:            str
     text:             str
     level:            str
     translation_mode: str
     status:           str
     created_at:       str
+
+
+class ChapterTitleUpdateRequest(BaseModel):
+    title: str
+
+    @field_validator("title")
+    @classmethod
+    def title_valid(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Le titre du chapitre ne peut pas être vide.")
+        return v
 
 
 # ── Mots extraits ────────────────────────────────────────────

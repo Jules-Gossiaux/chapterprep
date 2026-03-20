@@ -17,16 +17,17 @@ def create_chapter(
     translation_mode: str,
 ) -> int:
     """Insère un nouveau chapitre et retourne son id."""
+    chapter_title = f"Chapitre {chapter_number}"
     conn = get_connection()
     try:
         with conn:
             cursor = conn.execute(
                 """
                 INSERT INTO chapters
-                    (user_id, book_id, chapter_number, text, level, translation_mode)
-                VALUES (?, ?, ?, ?, ?, ?)
+                    (user_id, book_id, chapter_number, title, text, level, translation_mode)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (user_id, book_id, chapter_number, text, level, translation_mode),
+                (user_id, book_id, chapter_number, chapter_title, text, level, translation_mode),
             )
             return cursor.lastrowid
     finally:
@@ -61,6 +62,18 @@ def update_chapter_learning_settings(
                 WHERE id = ?
                 """,
                 (level, translation_mode, chapter_id),
+            )
+    finally:
+        conn.close()
+
+
+def update_chapter_title(chapter_id: int, title: str) -> None:
+    conn = get_connection()
+    try:
+        with conn:
+            conn.execute(
+                "UPDATE chapters SET title = ? WHERE id = ?",
+                (title, chapter_id),
             )
     finally:
         conn.close()

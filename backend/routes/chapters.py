@@ -16,6 +16,7 @@ from models import (
     ChapterCreateRequest,
     ChapterExtractRequest,
     ChapterResponse,
+    ChapterTitleUpdateRequest,
     ExtractionResponse,
     SingleWordAddRequest,
     TokenData,
@@ -44,6 +45,22 @@ def get_chapter(
 ):
     """Retourne un chapitre en vérifiant l'ownership."""
     return chapter_service.get_chapter(chapter_id=chapter_id, book_id=book_id, user_id=current_user.user_id)
+
+
+@router.patch("/{chapter_id}", response_model=ChapterResponse)
+def update_chapter_title(
+    book_id: int,
+    chapter_id: int,
+    body: ChapterTitleUpdateRequest,
+    current_user: TokenData = Depends(get_current_user),
+):
+    """Met à jour le titre libre d'un chapitre (ownership vérifié)."""
+    return chapter_service.update_chapter_title(
+        chapter_id=chapter_id,
+        book_id=book_id,
+        user_id=current_user.user_id,
+        title=body.title,
+    )
 
 
 @router.post("", response_model=ExtractionResponse, status_code=201)

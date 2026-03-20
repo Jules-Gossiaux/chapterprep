@@ -121,6 +121,61 @@
   text-overflow: ellipsis;
 }
 
+.chapter-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.chapter-card__title-row .chapter-card__title {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.chapter-card__edit {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-size: 0.9rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--transition);
+  padding: 0.2rem;
+  border-radius: 6px;
+  line-height: 1;
+  color: var(--color-muted);
+}
+
+.chapter-card:hover .chapter-card__edit {
+  opacity: 1;
+}
+
+.chapter-card__edit:hover {
+  background: #edf3ef;
+  color: var(--color-primary);
+}
+
+.chapter-card__title-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.28rem 0.45rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+  outline: none;
+}
+
+.chapter-card__title-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(59, 94, 74, 0.15);
+}
+
 .chapter-card__meta {
   display: flex;
   gap: 1rem;

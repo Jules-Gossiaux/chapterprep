@@ -39,6 +39,7 @@ def init_db() -> None:
                 user_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 book_id          INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
                 chapter_number   INTEGER NOT NULL,
+                title            TEXT,
                 text             TEXT    NOT NULL,
                 level            TEXT    NOT NULL,
                 translation_mode TEXT    NOT NULL,
@@ -53,6 +54,10 @@ def init_db() -> None:
         if "status" not in chapter_columns:
             conn.execute(
                 "ALTER TABLE chapters ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'"
+            )
+        if "title" not in chapter_columns:
+            conn.execute(
+                "ALTER TABLE chapters ADD COLUMN title TEXT"
             )
         conn.execute("""
             CREATE TABLE IF NOT EXISTS words (

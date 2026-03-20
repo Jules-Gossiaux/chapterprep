@@ -8,6 +8,13 @@ from models import ChapterCreateRequest, ChapterResponse
 from repositories import book_repository, chapter_repository
 
 
+def _to_chapter_response(row) -> ChapterResponse:
+    data = dict(row)
+    if not data.get("title"):
+        data["title"] = f"Chapitre {data['chapter_number']}"
+    return ChapterResponse(**data)
+
+
 def create_chapter(user_id: int, book_id: int, data: ChapterCreateRequest) -> ChapterResponse:
     """Persiste le chapitre en base et retourne le modèle de réponse."""
     new_id = chapter_repository.create_chapter(
@@ -24,7 +31,7 @@ def create_chapter(user_id: int, book_id: int, data: ChapterCreateRequest) -> Ch
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erreur lors de la création du chapitre.",
         )
-    return ChapterResponse(**dict(row))
+    return _to_chapter_response(row)
 
 
 def get_chapters(book_id: int, user_id: int) -> list[ChapterResponse]:
@@ -34,7 +41,7 @@ def get_chapters(book_id: int, user_id: int) -> list[ChapterResponse]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé.")
 
     rows = chapter_repository.get_chapters_by_book_and_user(book_id=book_id, user_id=user_id)
-    return [ChapterResponse(**dict(row)) for row in rows]
+    return [_to_chapter_response(row) for row in rows]
 
 
 def get_chapter(chapter_id: int, book_id: int, user_id: int) -> ChapterResponse:
@@ -46,7 +53,7 @@ def get_chapter(chapter_id: int, book_id: int, user_id: int) -> ChapterResponse:
     row = chapter_repository.get_chapter_by_id(chapter_id)
     if not row or row["user_id"] != user_id or row["book_id"] != book_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé.")
-    return ChapterResponse(**dict(row))
+    return _to_chapter_response(row)
 
 
 def delete_chapter(chapter_id: int, book_id: int, user_id: int) -> None:
@@ -84,4 +91,21 @@ def update_learning_settings(
     updated = chapter_repository.get_chapter_by_id(chapter_id)
     if not updated:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chapitre introuvable.")
-    return ChapterResponse(**dict(updated))
+    return _to_chapter_response(updated)
+
+
+def update_chapter_title(
+    chapter_id: int,
+    book_id: int,
+    user_id: int,
+    title: str,
+) -> ChapterResponse:
+    row = chapter_repository.get_chapter_by_id(chapter_id)
+    if not row or row["user_id"] != user_id or row["book_id"] != book_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé.")
+
+    chapter_repository.update_chapter_title(chapter_id=chapter_id, title=title)
+    updated = chapter_repository.get_chapter_by_id(chapter_id)
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chapitre introuvable.")
+    return _to_chapter_response(updated)

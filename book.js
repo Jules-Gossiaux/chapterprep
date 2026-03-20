@@ -247,11 +247,15 @@ function renderChapter(chapter, index) {
 
   const modeLabel = chapter.translation_mode === "definition" ? "Définition" : "Traduction";
   const isPending = chapter.status === "pending";
+  const chapterTitle = chapter.title || `Chapitre ${chapter.chapter_number}`;
 
   li.innerHTML = `
     <div class="chapter-card__index">${index}</div>
     <div class="chapter-card__body">
-      <p class="chapter-card__title">Chapitre ${chapter.chapter_number}</p>
+      <div class="chapter-card__title-row">
+        <p class="chapter-card__title" data-role="title-value">${escapeHtml(chapterTitle)}</p>
+        <button class="chapter-card__edit" type="button" aria-label="Renommer ce chapitre" title="Renommer">✏</button>
+      </div>
       <div class="chapter-card__meta">
         <span class="chapter-card__stat">Niveau <strong>${escapeHtml(chapter.level)}</strong></span>
         <span class="chapter-card__stat">${modeLabel}</span>
@@ -266,13 +270,99 @@ function renderChapter(chapter, index) {
     deleteChapter(chapter.id, chapter.chapter_number, li)
   );
 
+  const bodyEl = li.querySelector(".chapter-card__body");
+  const titleValueEl = li.querySelector('[data-role="title-value"]');
+  const editBtn = li.querySelector(".chapter-card__edit");
+  let isEditingTitle = false;
+
+  const cancelEdit = (inputEl) => {
+    if (inputEl) inputEl.remove();
+    titleValueEl.hidden = false;
+    editBtn.hidden = false;
+    isEditingTitle = false;
+  };
+
+  const saveEdit = async (inputEl) => {
+    const nextTitle = inputEl.value.trim();
+    if (!nextTitle || nextTitle === titleValueEl.textContent.trim()) {
+      cancelEdit(inputEl);
+      return;
+    }
+
+    inputEl.disabled = true;
+    try {
+      const res = await authFetch(`${API_URL}/books/${bookId}/chapters/${chapter.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: nextTitle }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.detail || "Impossible de renommer ce chapitre.");
+        cancelEdit(inputEl);
+        return;
+      }
+
+      titleValueEl.textContent = data.title || nextTitle;
+      cancelEdit(inputEl);
+    } catch (err) {
+      if (err.message !== "Unauthorized") {
+        alert("Impossible de contacter le serveur.");
+      }
+      cancelEdit(inputEl);
+    }
+  };
+
+  editBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (isEditingTitle) return;
+    isEditingTitle = true;
+
+    const currentTitle = titleValueEl.textContent.trim();
+    titleValueEl.hidden = true;
+    editBtn.hidden = true;
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "chapter-card__title-input";
+    input.value = currentTitle;
+    input.maxLength = 160;
+    input.setAttribute("aria-label", "Titre du chapitre");
+    input.addEventListener("click", (evt) => evt.stopPropagation());
+
+    let escapePressed = false;
+
+    input.addEventListener("keydown", async (evt) => {
+      evt.stopPropagation();
+      if (evt.key === "Enter") {
+        evt.preventDefault();
+        await saveEdit(input);
+      } else if (evt.key === "Escape") {
+        evt.preventDefault();
+        escapePressed = true;
+        cancelEdit(input);
+      }
+    });
+
+    input.addEventListener("blur", async () => {
+      if (escapePressed) return;
+      await saveEdit(input);
+    });
+
+    titleValueEl.after(input);
+    input.focus();
+    input.select();
+  });
+
   if (isPending) {
-    li.querySelector(".chapter-card__body").style.cursor = "default";
+    bodyEl.style.cursor = "default";
     li.querySelector(".chapter-card__extract").addEventListener("click", () => {
       openExtractModal(chapter);
     });
   } else {
-    li.querySelector(".chapter-card__body").addEventListener("click", () => {
+    bodyEl.addEventListener("click", () => {
+      if (isEditingTitle) return;
       window.location.href = `read.html?id=${chapter.id}&book_id=${bookId}`;
     });
   }
