@@ -42,9 +42,18 @@ def init_db() -> None:
                 text             TEXT    NOT NULL,
                 level            TEXT    NOT NULL,
                 translation_mode TEXT    NOT NULL,
+                status           TEXT    NOT NULL DEFAULT 'pending',
                 created_at       TEXT    NOT NULL DEFAULT (datetime('now'))
             )
         """)
+        chapter_columns = {
+            row["name"]
+            for row in conn.execute("PRAGMA table_info(chapters)").fetchall()
+        }
+        if "status" not in chapter_columns:
+            conn.execute(
+                "ALTER TABLE chapters ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'"
+            )
         conn.execute("""
             CREATE TABLE IF NOT EXISTS words (
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,

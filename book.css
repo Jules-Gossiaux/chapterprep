@@ -137,6 +137,34 @@
   color: var(--color-primary);
 }
 
+.chapter-card__status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #fff4db;
+  border: 1px solid #f7d48b;
+  color: #8a5a00;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.chapter-card__extract {
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-primary);
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chapter-card__extract:hover {
+  background: #eef4f0;
+}
+
 .chapter-card__delete {
   flex-shrink: 0;
   background: none;

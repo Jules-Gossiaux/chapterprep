@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from dependencies import get_current_user
 from models import (
     ChapterCreateRequest,
+    ChapterExtractRequest,
     ChapterResponse,
     ExtractionResponse,
     SingleWordAddRequest,
@@ -79,6 +80,33 @@ def create_chapter_and_extract(
         )
         raise
 
+    return ExtractionResponse(chapter=chapter, words=words)
+
+
+@router.post("/{chapter_id}/extract", response_model=ExtractionResponse)
+def extract_existing_chapter(
+    book_id: int,
+    chapter_id: int,
+    body: ChapterExtractRequest,
+    current_user: TokenData = Depends(get_current_user),
+):
+    """Extrait le vocabulaire d'un chapitre existant (status pending), sans recréer le chapitre."""
+    book = book_service.get_book(book_id=book_id, user_id=current_user.user_id)
+    chapter = chapter_service.update_learning_settings(
+        chapter_id=chapter_id,
+        book_id=book_id,
+        user_id=current_user.user_id,
+        level=body.level,
+        translation_mode=body.translation_mode,
+    )
+
+    words = vocabulary_service.extract_vocabulary(
+        text=chapter.text,
+        level=body.level,
+        target_language=book.language,
+        word_count=body.words_to_extract,
+        translation_mode=body.translation_mode,
+    )
     return ExtractionResponse(chapter=chapter, words=words)
 
 

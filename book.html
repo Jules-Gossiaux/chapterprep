@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
@@ -59,7 +59,7 @@
           <button class="modal__close" id="modal-close" aria-label="Fermer">&times;</button>
         </div>
         <form id="add-chapter-form" class="modal__form" novalidate>
-          <div class="form__group">
+          <div class="form__group" id="chapter-number-group">
             <label for="chapter-number" class="form__label">Numéro du chapitre</label>
             <input type="number" id="chapter-number" class="form__input" min="1" placeholder="ex : 3" required />
           </div>
@@ -85,7 +85,7 @@
             </select>
           </div>
 
-          <div class="form__group">
+          <div class="form__group" id="chapter-content-group">
             <label for="chapter-content" class="form__label">Texte du chapitre</label>
             <textarea
               id="chapter-content"

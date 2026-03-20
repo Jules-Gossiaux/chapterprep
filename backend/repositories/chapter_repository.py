@@ -33,6 +33,39 @@ def create_chapter(
         conn.close()
 
 
+def update_chapter_status(chapter_id: int, status: str) -> None:
+    """Met à jour le statut d'un chapitre (pending/done)."""
+    conn = get_connection()
+    try:
+        with conn:
+            conn.execute(
+                "UPDATE chapters SET status = ? WHERE id = ?",
+                (status, chapter_id),
+            )
+    finally:
+        conn.close()
+
+
+def update_chapter_learning_settings(
+    chapter_id: int,
+    level: str,
+    translation_mode: str,
+) -> None:
+    conn = get_connection()
+    try:
+        with conn:
+            conn.execute(
+                """
+                UPDATE chapters
+                SET level = ?, translation_mode = ?
+                WHERE id = ?
+                """,
+                (level, translation_mode, chapter_id),
+            )
+    finally:
+        conn.close()
+
+
 # ─── Lecture ─────────────────────────────────────────────────
 
 def get_chapter_by_id(chapter_id: int) -> sqlite3.Row | None:

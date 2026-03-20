@@ -1,4 +1,4 @@
-// ─────────────────────────────────────────────
+﻿// ─────────────────────────────────────────────
 //  Configuration
 // ─────────────────────────────────────────────
 const API_URL = "http://localhost:8000";
@@ -52,6 +52,8 @@ const extractCurrent     = document.getElementById("extract-current");
 const chapterNumberInput = document.getElementById("chapter-number");
 const levelSelect        = document.getElementById("chapter-level");
 const translationSelect  = document.getElementById("translation-mode");
+const chapterNumberGroup = document.getElementById("chapter-number-group");
+const chapterContentGroup = document.getElementById("chapter-content-group");
 
 // Vue sélection des mots
 const modalTitleEl        = document.getElementById("modal-title");
@@ -68,6 +70,9 @@ navUsername.textContent = username;
 let pendingChapterId = null;
 // Mots suggérés par Gemini, mémorisés pour la confirmation
 let pendingWords     = [];
+let modalMode = "create";
+let shouldDeletePendingChapter = true;
+let extractionTargetWords = 5;
 
 // ─────────────────────────────────────────────
 //  Logout
@@ -158,16 +163,47 @@ wordsSlider.addEventListener("input", () => {
 //  Modale
 // ─────────────────────────────────────────────
 function openModal() {
+  modalMode = "create";
+  shouldDeletePendingChapter = true;
+  extractionTargetWords = parseInt(wordsSlider.value, 10) || 5;
   addChapterForm.reset();
   addChapterError.textContent = "";
   wordStatsEl.hidden          = true;
   extractGroup.hidden         = true;
+  chapterNumberGroup.hidden   = false;
+  chapterContentGroup.hidden  = false;
   delete wordsSlider.dataset.touched;
   addChapterForm.hidden       = false;
   wordSelectionView.hidden    = true;
   modalTitleEl.textContent    = "Nouveau chapitre";
   modalOverlay.hidden = false;
   chapterNumberInput.focus();
+}
+
+function openExtractModal(chapter) {
+  modalMode = "extract-existing";
+  shouldDeletePendingChapter = false;
+  pendingChapterId = chapter.id;
+  pendingWords = [];
+
+  const chapterText = String(chapter.text || "");
+  extractionTargetWords = recommendWords(countWords(chapterText));
+
+  addChapterForm.reset();
+  addChapterError.textContent = "";
+  chapterNumberGroup.hidden   = true;
+  chapterContentGroup.hidden  = true;
+  wordStatsEl.hidden          = true;
+  extractGroup.hidden         = true;
+  addChapterForm.hidden       = false;
+  wordSelectionView.hidden    = true;
+  modalTitleEl.textContent    = `Extraction • Chapitre ${chapter.chapter_number}`;
+
+  levelSelect.value = chapter.level || "B2";
+  translationSelect.value = chapter.translation_mode || "translation";
+
+  modalOverlay.hidden = false;
+  levelSelect.focus();
 }
 
 async function closeModal() {
@@ -179,14 +215,19 @@ async function closeModal() {
   modalTitleEl.textContent = "Nouveau chapitre";
 
   // Nettoyage asynchrone : supprime le chapitre créé mais non confirmé
-  if (pendingChapterId !== null) {
+  if (shouldDeletePendingChapter && pendingChapterId !== null) {
     const id     = pendingChapterId;
     pendingChapterId = null;
     pendingWords     = [];
     try {
       await authFetch(`${API_URL}/books/${bookId}/chapters/${id}`, { method: "DELETE" });
     } catch { /* ignore */ }
+  } else {
+    pendingChapterId = null;
+    pendingWords = [];
   }
+  modalMode = "create";
+  shouldDeletePendingChapter = true;
 }
 
 addChapterBtn.addEventListener("click", openModal);
@@ -205,6 +246,7 @@ function renderChapter(chapter, index) {
   li.dataset.id = chapter.id;
 
   const modeLabel = chapter.translation_mode === "definition" ? "Définition" : "Traduction";
+  const isPending = chapter.status === "pending";
 
   li.innerHTML = `
     <div class="chapter-card__index">${index}</div>
@@ -213,8 +255,10 @@ function renderChapter(chapter, index) {
       <div class="chapter-card__meta">
         <span class="chapter-card__stat">Niveau <strong>${escapeHtml(chapter.level)}</strong></span>
         <span class="chapter-card__stat">${modeLabel}</span>
+        ${isPending ? '<span class="chapter-card__status-badge">En attente</span>' : ''}
       </div>
     </div>
+    ${isPending ? '<button class="chapter-card__extract" type="button">Extraire le vocabulaire</button>' : ''}
     <button class="chapter-card__delete" aria-label="Supprimer ce chapitre" title="Supprimer">🗑</button>
   `;
 
@@ -222,9 +266,16 @@ function renderChapter(chapter, index) {
     deleteChapter(chapter.id, chapter.chapter_number, li)
   );
 
-  li.querySelector(".chapter-card__body").addEventListener("click", () => {
-    window.location.href = `read.html?id=${chapter.id}&book_id=${bookId}`;
-  });
+  if (isPending) {
+    li.querySelector(".chapter-card__body").style.cursor = "default";
+    li.querySelector(".chapter-card__extract").addEventListener("click", () => {
+      openExtractModal(chapter);
+    });
+  } else {
+    li.querySelector(".chapter-card__body").addEventListener("click", () => {
+      window.location.href = `read.html?id=${chapter.id}&book_id=${bookId}`;
+    });
+  }
 
   return li;
 }
@@ -279,29 +330,47 @@ addChapterForm.addEventListener("submit", async (e) => {
   const level          = levelSelect.value;
   const translationMode = translationSelect.value;
   const text           = contentTextarea.value.trim();
-  const wordsToExtract = parseInt(wordsSlider.value, 10);
+  const wordsToExtract = modalMode === "extract-existing"
+    ? extractionTargetWords
+    : parseInt(wordsSlider.value, 10);
 
-  if (!chapterNumber || isNaN(chapterNumber) || chapterNumber < 1) { addChapterError.textContent = "Le numéro de chapitre est obligatoire."; return; }
-  if (!text)            { addChapterError.textContent = "Le contenu est obligatoire."; return; }
+  if (modalMode === "create") {
+    if (!chapterNumber || isNaN(chapterNumber) || chapterNumber < 1) { addChapterError.textContent = "Le numéro de chapitre est obligatoire."; return; }
+    if (!text) { addChapterError.textContent = "Le contenu est obligatoire."; return; }
+  }
 
   setLoading(addChapterSubmit, "Extraction en cours…");
 
   try {
-    const res = await authFetch(`${API_URL}/books/${bookId}/chapters`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chapter_number:   chapterNumber,
-        text,
-        words_to_extract: wordsToExtract,
-        level,
-        translation_mode: translationMode,
-      }),
-    });
+    let res;
+    if (modalMode === "extract-existing") {
+      res = await authFetch(`${API_URL}/books/${bookId}/chapters/${pendingChapterId}/extract`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          words_to_extract: wordsToExtract,
+          level,
+          translation_mode: translationMode,
+        }),
+      });
+    } else {
+      res = await authFetch(`${API_URL}/books/${bookId}/chapters`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chapter_number:   chapterNumber,
+          text,
+          words_to_extract: wordsToExtract,
+          level,
+          translation_mode: translationMode,
+        }),
+      });
+    }
 
     const data = await res.json().catch(() => ({}));
     if (!res.ok) { addChapterError.textContent = data.detail || "Erreur lors de l'enregistrement."; return; }
 
+    shouldDeletePendingChapter = modalMode === "create";
     renderWordSelection(data.chapter.id, data.words);
   } catch (err) {
     if (err.message !== "Unauthorized") {
@@ -356,8 +425,8 @@ function renderWordSelection(chapterId, words) {
 }
 
 backToFormBtn.addEventListener("click", async () => {
-  // Supprime silencieusement le chapitre non confirmé
-  if (pendingChapterId !== null) {
+  // Supprime silencieusement le chapitre non confirmé uniquement en mode création
+  if (shouldDeletePendingChapter && pendingChapterId !== null) {
     const id     = pendingChapterId;
     pendingChapterId = null;
     pendingWords     = [];
@@ -367,7 +436,7 @@ backToFormBtn.addEventListener("click", async () => {
   }
   wordSelectionView.hidden = true;
   addChapterForm.hidden    = false;
-  modalTitleEl.textContent = "Nouveau chapitre";
+  modalTitleEl.textContent = modalMode === "extract-existing" ? "Extraction du vocabulaire" : "Nouveau chapitre";
 
 });
 

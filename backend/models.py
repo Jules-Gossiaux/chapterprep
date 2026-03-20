@@ -166,6 +166,33 @@ class ChapterCreateRequest(BaseModel):
         return v
 
 
+class ChapterExtractRequest(BaseModel):
+    words_to_extract: int
+    level:            str
+    translation_mode: str
+
+    @field_validator("words_to_extract")
+    @classmethod
+    def words_to_extract_valid(cls, v: int) -> int:
+        if not (1 <= v <= 50):
+            raise ValueError("Le nombre de mots doit être compris entre 1 et 50.")
+        return v
+
+    @field_validator("level")
+    @classmethod
+    def level_valid(cls, v: str) -> str:
+        if v not in _ALLOWED_LEVELS:
+            raise ValueError(f"Niveau invalide. Valeurs acceptées : {sorted(_ALLOWED_LEVELS)}")
+        return v
+
+    @field_validator("translation_mode")
+    @classmethod
+    def translation_mode_valid(cls, v: str) -> str:
+        if v not in _ALLOWED_TRANSLATION_MODES:
+            raise ValueError(f"Mode invalide. Valeurs acceptées : {sorted(_ALLOWED_TRANSLATION_MODES)}")
+        return v
+
+
 class ChapterResponse(BaseModel):
     id:               int
     user_id:          int
