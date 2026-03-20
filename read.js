@@ -17,7 +17,6 @@ if (!chapterId || !bookId) {
 
 const navUsernameEl = document.getElementById("nav-username");
 const logoutBtn = document.getElementById("logout-btn");
-const backLinkEl = document.getElementById("back-link");
 const chapterTitleEl = document.getElementById("chapter-title");
 const chapterMetaEl = document.getElementById("chapter-meta");
 const chapterTextEl = document.getElementById("chapter-text");
@@ -34,7 +33,6 @@ let suppressNextWordClick = false;
 const MAX_SELECTION_LENGTH = 180;
 
 navUsernameEl.textContent = username;
-backLinkEl.href = `book.html?id=${bookId}`;
 
 logoutBtn.addEventListener("click", () => {
   localStorage.clear();
