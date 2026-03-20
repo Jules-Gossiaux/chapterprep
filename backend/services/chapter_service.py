@@ -7,6 +7,8 @@ from fastapi import HTTPException, status
 from models import ChapterCreateRequest, ChapterResponse
 from repositories import book_repository, chapter_repository
 
+MAX_CHAPTER_WORDS = 2000
+
 
 def _to_chapter_response(row) -> ChapterResponse:
     data = dict(row)
@@ -17,6 +19,13 @@ def _to_chapter_response(row) -> ChapterResponse:
 
 def create_chapter(user_id: int, book_id: int, data: ChapterCreateRequest) -> ChapterResponse:
     """Persiste le chapitre en base et retourne le modèle de réponse."""
+    word_count = len(data.text.strip().split()) if data.text.strip() else 0
+    if word_count > MAX_CHAPTER_WORDS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Texte trop long : {word_count} mots (limite : {MAX_CHAPTER_WORDS}).",
+        )
+
     new_id = chapter_repository.create_chapter(
         user_id=user_id,
         book_id=book_id,

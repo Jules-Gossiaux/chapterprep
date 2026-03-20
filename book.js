@@ -39,6 +39,7 @@ const modalClose         = document.getElementById("modal-close");
 const modalCancelBtn     = document.getElementById("modal-cancel-btn");
 const addChapterForm     = document.getElementById("add-chapter-form");
 const addChapterError    = document.getElementById("add-chapter-error");
+const chapterContentError = document.getElementById("chapter-content-error");
 const addChapterSubmit   = document.getElementById("add-chapter-submit-btn");
 const contentTextarea    = document.getElementById("chapter-content");
 const wordCountEl        = document.getElementById("word-count");
@@ -74,6 +75,8 @@ let modalMode = "create";
 let shouldDeletePendingChapter = true;
 let extractionTargetWords = 5;
 
+const MAX_CHAPTER_WORDS = 2000;
+
 // ─────────────────────────────────────────────
 //  Logout
 // ─────────────────────────────────────────────
@@ -87,6 +90,23 @@ logoutBtn.addEventListener("click", () => {
 // ─────────────────────────────────────────────
 function countWords(text) {
   return text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
+}
+
+function enforceWordLimit(text, limit) {
+  const words = [...text.matchAll(/\S+/g)];
+  const total = words.length;
+  if (total <= limit) {
+    return { text, total, truncated: false, dropped: 0 };
+  }
+
+  const lastKept = words[limit - 1];
+  const endIndex = lastKept.index + lastKept[0].length;
+  return {
+    text: text.slice(0, endIndex),
+    total,
+    truncated: true,
+    dropped: total - limit,
+  };
 }
 
 function recommendWords(wordCount) {
@@ -130,9 +150,38 @@ async function authFetch(url, options = {}) {
 //  Compteur de mots live sur le textarea
 // ─────────────────────────────────────────────
 contentTextarea.addEventListener("input", updateWordStats);
+contentTextarea.addEventListener("beforeinput", (e) => {
+  if (modalMode !== "create") return;
+  if (!e.inputType || !e.inputType.startsWith("insert")) return;
+
+  const hasSelection = contentTextarea.selectionStart !== contentTextarea.selectionEnd;
+  const currentWords = countWords(contentTextarea.value);
+  if (currentWords >= MAX_CHAPTER_WORDS && !hasSelection) {
+    e.preventDefault();
+    chapterContentError.textContent = `Limite atteinte : ${MAX_CHAPTER_WORDS} mots maximum.`;
+    addChapterSubmit.disabled = true;
+  }
+});
 
 function updateWordStats() {
-  const wc  = countWords(contentTextarea.value);
+  let wc = countWords(contentTextarea.value);
+
+  if (modalMode === "create") {
+    const limited = enforceWordLimit(contentTextarea.value, MAX_CHAPTER_WORDS);
+    if (limited.truncated) {
+      contentTextarea.value = limited.text;
+      wc = MAX_CHAPTER_WORDS;
+      chapterContentError.textContent = `Texte tronqué à ${MAX_CHAPTER_WORDS} mots (${limited.dropped} mots ignorés).`;
+      addChapterSubmit.disabled = false;
+    } else if (wc >= MAX_CHAPTER_WORDS) {
+      chapterContentError.textContent = `Limite atteinte : ${MAX_CHAPTER_WORDS} mots maximum.`;
+      addChapterSubmit.disabled = false;
+    } else {
+      chapterContentError.textContent = "";
+      addChapterSubmit.disabled = false;
+    }
+  }
+
   const rec = recommendWords(wc);
 
   if (wc === 0) {
@@ -168,6 +217,8 @@ function openModal() {
   extractionTargetWords = parseInt(wordsSlider.value, 10) || 5;
   addChapterForm.reset();
   addChapterError.textContent = "";
+  chapterContentError.textContent = "";
+  addChapterSubmit.disabled = false;
   wordStatsEl.hidden          = true;
   extractGroup.hidden         = true;
   chapterNumberGroup.hidden   = false;
@@ -191,6 +242,8 @@ function openExtractModal(chapter) {
 
   addChapterForm.reset();
   addChapterError.textContent = "";
+  chapterContentError.textContent = "";
+  addChapterSubmit.disabled = false;
   chapterNumberGroup.hidden   = true;
   chapterContentGroup.hidden  = true;
   wordStatsEl.hidden          = true;
@@ -213,6 +266,8 @@ async function closeModal() {
   addChapterForm.hidden    = false;
   wordSelectionView.hidden = true;
   modalTitleEl.textContent = "Nouveau chapitre";
+  chapterContentError.textContent = "";
+  addChapterSubmit.disabled = false;
 
   // Nettoyage asynchrone : supprime le chapitre créé mais non confirmé
   if (shouldDeletePendingChapter && pendingChapterId !== null) {
@@ -427,6 +482,11 @@ addChapterForm.addEventListener("submit", async (e) => {
   if (modalMode === "create") {
     if (!chapterNumber || isNaN(chapterNumber) || chapterNumber < 1) { addChapterError.textContent = "Le numéro de chapitre est obligatoire."; return; }
     if (!text) { addChapterError.textContent = "Le contenu est obligatoire."; return; }
+    if (countWords(text) > MAX_CHAPTER_WORDS) {
+      chapterContentError.textContent = `Texte trop long : ${countWords(text)} mots (limite : ${MAX_CHAPTER_WORDS}).`;
+      addChapterSubmit.disabled = true;
+      return;
+    }
   }
 
   setLoading(addChapterSubmit, "Extraction en cours…");
