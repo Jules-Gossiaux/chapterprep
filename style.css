@@ -213,6 +213,56 @@ body {
   cursor: not-allowed;
 }
 
+.btn--secondary {
+  background: #e7dcc8;
+  color: var(--color-primary-h);
+  padding: 0.65rem 0.9rem;
+  font-size: 0.9rem;
+  border: 1px solid var(--color-border);
+}
+
+.btn--secondary:hover {
+  background: #ddceb3;
+}
+
+.btn--secondary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.resend-box {
+  margin-top: -0.3rem;
+  margin-bottom: -0.1rem;
+  padding: 0.7rem;
+  border: 1px dashed var(--color-border);
+  border-radius: 8px;
+  background: #f8f3ea;
+}
+
+.resend-box__label {
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  margin-bottom: 0.45rem;
+}
+
+.resend-box__row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.resend-box__input {
+  flex: 1;
+  min-width: 0;
+}
+
+.resend-box__message {
+  min-height: 1.1em;
+  margin-top: 0.45rem;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+}
+
 /* ───────────────────────────────────────────
    Loading spinner (inside button)
 ─────────────────────────────────────────── */
@@ -239,5 +289,10 @@ body {
 
   .brand__title {
     font-size: 1.7rem;
+  }
+
+  .resend-box__row {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

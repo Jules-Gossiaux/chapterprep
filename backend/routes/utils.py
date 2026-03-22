@@ -13,6 +13,12 @@ async def preview_pdf(
 ):
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Seuls les fichiers PDF sont acceptés.")
+
+    if not (250 <= words_per_chapter <= 1200):
+        raise HTTPException(
+            status_code=400,
+            detail="Le nombre de mots par chapitre doit être compris entre 250 et 1200.",
+        )
     
     content = await file.read()
     try:

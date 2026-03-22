@@ -3,11 +3,16 @@ Routes d'authentification : /auth/register et /auth/login.
 Ce fichier ne contient que la définition des endpoints FastAPI.
 Toute la logique métier est dans services/auth_service.py.
 """
+from urllib.parse import urlencode
+
 from fastapi import APIRouter
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import Depends
+from fastapi import Query
+from fastapi.responses import RedirectResponse
 
-from models import LoginResponse, RegisterRequest, RegisterResponse
+import config
+from models import LoginResponse, MessageResponse, RegisterRequest, RegisterResponse, ResendVerificationRequest
 from services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -36,3 +41,19 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
         username=form_data.username,
         password=form_data.password,
     )
+
+
+@router.get("/verify-email")
+def verify_email(token: str = Query(...)):
+    result = auth_service.verify_email_token(token)
+    if result == "verified":
+        query = urlencode({"verified": "true"})
+        return RedirectResponse(url=f"{config.FRONTEND_INDEX_URL}?{query}", status_code=303)
+
+    query = urlencode({"error": result})
+    return RedirectResponse(url=f"{config.FRONTEND_INDEX_URL}?{query}", status_code=303)
+
+
+@router.post("/resend-verification", response_model=MessageResponse)
+def resend_verification(body: ResendVerificationRequest):
+    return auth_service.resend_verification_email(email=body.email)

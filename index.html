@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,31 +10,31 @@
     <div class="container">
       <header class="brand">
         <h1 class="brand__title">ChapterPrep</h1>
-        <p class="brand__tagline">Maîtrise le vocabulaire avant de tourner la première page.</p>
+        <p class="brand__tagline">Master vocabulary before you turn the first page.</p>
       </header>
 
       <div class="card">
         <!-- Onglets -->
         <div class="tabs">
-          <button class="tab tab--active" data-tab="login">Connexion</button>
-          <button class="tab" data-tab="register">Inscription</button>
+          <button class="tab tab--active" data-tab="login">Log in</button>
+          <button class="tab" data-tab="register">Sign up</button>
         </div>
 
-        <!-- Formulaire connexion -->
+        <!-- Login form -->
         <form id="login-form" class="form form--active" novalidate>
           <div class="form__group">
-            <label for="login-username" class="form__label">Nom d'utilisateur</label>
+            <label for="login-username" class="form__label">Username</label>
             <input
               type="text"
               id="login-username"
               class="form__input"
-              placeholder="ex: jeanlire"
+              placeholder="e.g. readerjane"
               autocomplete="username"
               required
             />
           </div>
           <div class="form__group">
-            <label for="login-password" class="form__label">Mot de passe</label>
+            <label for="login-password" class="form__label">Password</label>
             <input
               type="password"
               id="login-password"
@@ -46,20 +46,34 @@
           </div>
           <p class="form__error" id="login-error" aria-live="polite"></p>
           <p class="form__success" id="login-success" aria-live="polite"></p>
+          <div class="resend-box">
+            <p class="resend-box__label">Email not verified yet?</p>
+            <div class="resend-box__row">
+              <input
+                type="email"
+                id="resend-email"
+                class="form__input resend-box__input"
+                placeholder="Your signup email"
+                autocomplete="email"
+              />
+              <button type="button" class="btn btn--secondary" id="resend-btn">Resend</button>
+            </div>
+            <p class="resend-box__message" id="resend-message" aria-live="polite"></p>
+          </div>
           <button type="submit" class="btn btn--primary" id="login-btn">
-            Se connecter
+            Log in
           </button>
         </form>
 
-        <!-- Formulaire inscription -->
+        <!-- Signup form -->
         <form id="register-form" class="form" novalidate>
           <div class="form__group">
-            <label for="reg-username" class="form__label">Nom d'utilisateur</label>
+            <label for="reg-username" class="form__label">Username</label>
             <input
               type="text"
               id="reg-username"
               class="form__input"
-              placeholder="ex: jeanlire"
+              placeholder="e.g. readerjane"
               autocomplete="username"
               required
             />
@@ -70,24 +84,24 @@
               type="email"
               id="reg-email"
               class="form__input"
-              placeholder="ex: jean@mail.com"
+              placeholder="e.g. jane@mail.com"
               autocomplete="email"
               required
             />
           </div>
           <div class="form__group">
-            <label for="reg-password" class="form__label">Mot de passe</label>
+            <label for="reg-password" class="form__label">Password</label>
             <input
               type="password"
               id="reg-password"
               class="form__input"
-              placeholder="8 caractères minimum"
+              placeholder="At least 8 characters"
               autocomplete="new-password"
               required
             />
           </div>
           <div class="form__group">
-            <label for="reg-password-confirm" class="form__label">Confirmer le mot de passe</label>
+            <label for="reg-password-confirm" class="form__label">Confirm password</label>
             <input
               type="password"
               id="reg-password-confirm"
@@ -99,7 +113,7 @@
           </div>
           <p class="form__error" id="register-error" aria-live="polite"></p>
           <button type="submit" class="btn btn--primary" id="register-btn">
-            Créer un compte
+            Create account
           </button>
         </form>
       </div>

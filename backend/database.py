@@ -20,9 +20,33 @@ def init_db() -> None:
                 username   TEXT    NOT NULL UNIQUE,
                 email      TEXT    NOT NULL UNIQUE,
                 password   TEXT    NOT NULL,
+                email_verified INTEGER NOT NULL DEFAULT 0,
+                email_verified_at TEXT,
+                verification_token_hash TEXT,
+                verification_token_expires_at TEXT,
                 created_at TEXT    NOT NULL DEFAULT (datetime('now'))
             )
         """)
+        user_columns = {
+            row["name"]
+            for row in conn.execute("PRAGMA table_info(users)").fetchall()
+        }
+        if "email_verified" not in user_columns:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0"
+            )
+        if "email_verified_at" not in user_columns:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN email_verified_at TEXT"
+            )
+        if "verification_token_hash" not in user_columns:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN verification_token_hash TEXT"
+            )
+        if "verification_token_expires_at" not in user_columns:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN verification_token_expires_at TEXT"
+            )
         conn.execute("""
             CREATE TABLE IF NOT EXISTS books (
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,

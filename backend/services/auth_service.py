@@ -3,15 +3,19 @@ Logique métier de l'authentification.
 Ce fichier orchestre : hachage de mot de passe, vérification, création de token JWT.
 Il ne fait pas de requêtes SQL directement — il délègue au repository.
 """
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
+import httpx
 from jose import JWTError, jwt
 from passlib.hash import pbkdf2_sha256
 
 import config
-from models import LoginResponse, RegisterResponse, TokenData
+from models import LoginResponse, MessageResponse, RegisterResponse, TokenData
 from repositories import user_repository
+from services import email_service
 
 
 # ─── Mots de passe ───────────────────────────────────────────
@@ -50,6 +54,26 @@ def decode_access_token(token: str) -> TokenData:
         )
 
 
+def _now_utc() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _build_verification_url(raw_token: str) -> str:
+    return f"{config.BACKEND_BASE_URL}/auth/verify-email?token={raw_token}"
+
+
+def _create_and_store_verification_token(user_id: int) -> str:
+    raw_token = secrets.token_urlsafe(32)
+    token_hash = _hash_token(raw_token)
+    expires_at = (_now_utc() + timedelta(hours=config.EMAIL_VERIFICATION_EXPIRE_HOURS)).isoformat()
+    user_repository.set_verification_token(user_id, token_hash, expires_at)
+    return raw_token
+
+
 # ─── Inscription ─────────────────────────────────────────────
 
 def register_user(username: str, email: str, password: str) -> RegisterResponse:
@@ -67,6 +91,19 @@ def register_user(username: str, email: str, password: str) -> RegisterResponse:
 
     hashed = hash_password(password)
     new_id = user_repository.create_user(username, email, hashed)
+
+    raw_token = _create_and_store_verification_token(new_id)
+    verify_url = _build_verification_url(raw_token)
+    try:
+        email_service.send_verification_email(
+            to_email=email,
+            username=username,
+            verify_url=verify_url,
+        )
+    except (httpx.HTTPError, RuntimeError):
+        # Le compte est cree meme si l'envoi initial echoue; l'utilisateur peut renvoyer l'email.
+        pass
+
     return RegisterResponse(id=new_id, username=username, email=email)
 
 
@@ -79,6 +116,11 @@ def login_user(username: str, password: str) -> LoginResponse:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Nom d'utilisateur ou mot de passe incorrect.",
         )
+    if not bool(user["email_verified"]):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Veuillez confirmer votre adresse email.",
+        )
 
     token_data = TokenData(user_id=user["id"], username=user["username"])
     token = create_access_token(token_data)
@@ -86,4 +128,48 @@ def login_user(username: str, password: str) -> LoginResponse:
         access_token=token,
         user_id=user["id"],
         username=user["username"],
+    )
+
+
+def verify_email_token(raw_token: str) -> str:
+    token_hash = _hash_token(raw_token)
+    user = user_repository.get_user_by_verification_token_hash(token_hash)
+    if not user:
+        return "invalid"
+
+    expires_raw = user["verification_token_expires_at"]
+    if not expires_raw:
+        return "invalid"
+
+    try:
+        expires_at = datetime.fromisoformat(expires_raw)
+    except ValueError:
+        return "invalid"
+
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if _now_utc() > expires_at:
+        return "expired"
+
+    user_repository.mark_email_verified(user["id"], _now_utc().isoformat())
+    return "verified"
+
+
+def resend_verification_email(email: str) -> MessageResponse:
+    user = user_repository.get_user_by_email(email)
+    if user and not bool(user["email_verified"]):
+        raw_token = _create_and_store_verification_token(user["id"])
+        verify_url = _build_verification_url(raw_token)
+        try:
+            email_service.send_verification_email(
+                to_email=user["email"],
+                username=user["username"],
+                verify_url=verify_url,
+            )
+        except (httpx.HTTPError, RuntimeError):
+            pass
+
+    return MessageResponse(
+        message="Si un compte existe pour cet email, un lien de verification a ete envoye."
     )

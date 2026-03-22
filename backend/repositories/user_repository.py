@@ -41,6 +41,18 @@ def get_user_by_id(user_id: int) -> sqlite3.Row | None:
         conn.close()
 
 
+def get_user_by_verification_token_hash(token_hash: str) -> sqlite3.Row | None:
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT * FROM users WHERE verification_token_hash = ?",
+            (token_hash,),
+        ).fetchone()
+        return row
+    finally:
+        conn.close()
+
+
 # ─── Écriture ─────────────────────────────────────────────────
 
 def create_user(username: str, email: str, hashed_password: str) -> int:
@@ -53,5 +65,40 @@ def create_user(username: str, email: str, hashed_password: str) -> int:
                 (username, email, hashed_password),
             )
             return cursor.lastrowid
+    finally:
+        conn.close()
+
+
+def set_verification_token(user_id: int, token_hash: str, expires_at: str) -> None:
+    conn = get_connection()
+    try:
+        with conn:
+            conn.execute(
+                """
+                UPDATE users
+                SET verification_token_hash = ?, verification_token_expires_at = ?
+                WHERE id = ?
+                """,
+                (token_hash, expires_at, user_id),
+            )
+    finally:
+        conn.close()
+
+
+def mark_email_verified(user_id: int, verified_at: str) -> None:
+    conn = get_connection()
+    try:
+        with conn:
+            conn.execute(
+                """
+                UPDATE users
+                SET email_verified = 1,
+                    email_verified_at = ?,
+                    verification_token_hash = NULL,
+                    verification_token_expires_at = NULL
+                WHERE id = ?
+                """,
+                (verified_at, user_id),
+            )
     finally:
         conn.close()

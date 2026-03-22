@@ -39,6 +39,19 @@ class RegisterResponse(BaseModel):
     email:    str
 
 
+class MessageResponse(BaseModel):
+    message: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+    @field_validator("email")
+    @classmethod
+    def email_valid(cls, v: str) -> str:
+        return v.strip().lower()
+
+
 # ── Connexion ────────────────────────────────────────────────
 class LoginResponse(BaseModel):
     access_token: str
